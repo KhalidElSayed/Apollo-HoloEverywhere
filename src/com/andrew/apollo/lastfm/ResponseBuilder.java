@@ -34,42 +34,6 @@ import java.util.Collections;
  */
 public final class ResponseBuilder {
 
-    private ResponseBuilder() {
-    }
-
-    /**
-     * @param <T>
-     * @param itemClass
-     * @return
-     */
-    private static <T> ItemFactory<T> getItemFactory(final Class<T> itemClass) {
-        return ItemFactoryBuilder.getFactoryBuilder().getItemFactory(itemClass);
-    }
-
-    /**
-     * @param <T>
-     * @param result
-     * @param itemClass
-     * @return
-     */
-    public static <T> Collection<T> buildCollection(final Result result, final Class<T> itemClass) {
-        return buildCollection(result, getItemFactory(itemClass));
-    }
-
-    /**
-     * @param <T>
-     * @param result
-     * @param factory
-     * @return
-     */
-    public static <T> Collection<T> buildCollection(final Result result,
-            final ItemFactory<T> factory) {
-        if (!result.isSuccessful()) {
-            return Collections.emptyList();
-        }
-        return buildCollection(result.getContentElement(), factory);
-    }
-
     /**
      * @param <T>
      * @param element
@@ -106,9 +70,8 @@ public final class ResponseBuilder {
      * @param itemClass
      * @return
      */
-    public static <T> PaginatedResult<T> buildPaginatedResult(final Result result,
-            final Class<T> itemClass) {
-        return buildPaginatedResult(result, getItemFactory(itemClass));
+    public static <T> Collection<T> buildCollection(final Result result, final Class<T> itemClass) {
+        return buildCollection(result, getItemFactory(itemClass));
     }
 
     /**
@@ -117,17 +80,55 @@ public final class ResponseBuilder {
      * @param factory
      * @return
      */
-    public static <T> PaginatedResult<T> buildPaginatedResult(final Result result,
+    public static <T> Collection<T> buildCollection(final Result result,
             final ItemFactory<T> factory) {
-        if (result != null) {
-            if (!result.isSuccessful()) {
-                return new PaginatedResult<T>(0, 0, Collections.<T> emptyList());
-            }
-
-            final DomElement contentElement = result.getContentElement();
-            return buildPaginatedResult(contentElement, contentElement, factory);
+        if (!result.isSuccessful()) {
+            return Collections.emptyList();
         }
-        return null;
+        return buildCollection(result.getContentElement(), factory);
+    }
+
+    /**
+     * @param <T>
+     * @param element
+     * @param itemClass
+     * @return
+     */
+    public static <T> T buildItem(final DomElement element, final Class<T> itemClass) {
+        return buildItem(element, getItemFactory(itemClass));
+    }
+
+    /**
+     * @param <T>
+     * @param element
+     * @param factory
+     * @return
+     */
+    private static <T> T buildItem(final DomElement element, final ItemFactory<T> factory) {
+        return factory.createItemFromElement(element);
+    }
+
+    /**
+     * @param <T>
+     * @param result
+     * @param itemClass
+     * @return
+     */
+    public static <T> T buildItem(final Result result, final Class<T> itemClass) {
+        return buildItem(result, getItemFactory(itemClass));
+    }
+
+    /**
+     * @param <T>
+     * @param result
+     * @param factory
+     * @return
+     */
+    public static <T> T buildItem(final Result result, final ItemFactory<T> factory) {
+        if (!result.isSuccessful()) {
+            return null;
+        }
+        return buildItem(result.getContentElement(), factory);
     }
 
     /**
@@ -170,8 +171,9 @@ public final class ResponseBuilder {
      * @param itemClass
      * @return
      */
-    public static <T> T buildItem(final Result result, final Class<T> itemClass) {
-        return buildItem(result, getItemFactory(itemClass));
+    public static <T> PaginatedResult<T> buildPaginatedResult(final Result result,
+            final Class<T> itemClass) {
+        return buildPaginatedResult(result, getItemFactory(itemClass));
     }
 
     /**
@@ -180,30 +182,28 @@ public final class ResponseBuilder {
      * @param factory
      * @return
      */
-    public static <T> T buildItem(final Result result, final ItemFactory<T> factory) {
-        if (!result.isSuccessful()) {
-            return null;
+    public static <T> PaginatedResult<T> buildPaginatedResult(final Result result,
+            final ItemFactory<T> factory) {
+        if (result != null) {
+            if (!result.isSuccessful()) {
+                return new PaginatedResult<T>(0, 0, Collections.<T> emptyList());
+            }
+
+            final DomElement contentElement = result.getContentElement();
+            return buildPaginatedResult(contentElement, contentElement, factory);
         }
-        return buildItem(result.getContentElement(), factory);
+        return null;
     }
 
     /**
      * @param <T>
-     * @param element
      * @param itemClass
      * @return
      */
-    public static <T> T buildItem(final DomElement element, final Class<T> itemClass) {
-        return buildItem(element, getItemFactory(itemClass));
+    private static <T> ItemFactory<T> getItemFactory(final Class<T> itemClass) {
+        return ItemFactoryBuilder.getFactoryBuilder().getItemFactory(itemClass);
     }
 
-    /**
-     * @param <T>
-     * @param element
-     * @param factory
-     * @return
-     */
-    private static <T> T buildItem(final DomElement element, final ItemFactory<T> factory) {
-        return factory.createItemFromElement(element);
+    private ResponseBuilder() {
     }
 }

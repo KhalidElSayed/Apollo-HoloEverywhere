@@ -11,6 +11,11 @@
 
 package com.andrew.apollo.utils;
 
+import java.lang.ref.WeakReference;
+import java.util.List;
+
+import org.holoeverywhere.app.Activity;
+
 import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningTaskInfo;
@@ -38,7 +43,6 @@ import android.view.ViewTreeObserver.OnGlobalLayoutListener;
 import android.webkit.WebView;
 import android.widget.Toast;
 
-import com.actionbarsherlock.app.SherlockFragmentActivity;
 import com.andrew.apollo.Config;
 import com.andrew.apollo.R;
 import com.andrew.apollo.cache.ImageCache;
@@ -46,10 +50,9 @@ import com.andrew.apollo.cache.ImageFetcher;
 import com.andrew.apollo.ui.activities.ShortcutActivity;
 import com.andrew.apollo.widgets.ColorPickerView;
 import com.andrew.apollo.widgets.ColorSchemeDialog;
-import com.devspark.appmsg.Crouton;
 
-import java.lang.ref.WeakReference;
-import java.util.List;
+import de.neofonie.mobile.app.android.widget.crouton.Crouton;
+import de.neofonie.mobile.app.android.widget.crouton.Style;
 
 /**
  * Mostly general and UI helpers.
@@ -63,18 +66,136 @@ public final class ApolloUtils {
      */
     private static final int BRIGHTNESS_THRESHOLD = 130;
 
-    /* This class is never initiated */
-    public ApolloUtils() {
+    /**
+     * @param context The {@link Context} to use.
+     * @return An {@link AlertDialog} used to show the open source licenses used
+     *         in Apollo.
+     */
+    public static final AlertDialog createOpenSourceDialog(final Context context) {
+        final WebView webView = new WebView(context);
+        webView.loadUrl("file:///android_asset/licenses.html");
+        return new AlertDialog.Builder(context).setTitle(R.string.settings_open_source_licenses)
+                .setView(webView)
+                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(final DialogInterface dialog, final int whichButton) {
+                        dialog.dismiss();
+                    }
+                }).create();
     }
 
     /**
-     * Used to determine if the current device is a Google TV
+     * Used to create shortcuts for an artist, album, or playlist that is then
+     * placed on the default launcher homescreen
      * 
-     * @param context The {@link Context} to use
-     * @return True if the device has Google TV, false otherwise
+     * @param displayName The shortcut name
+     * @param id The ID of the artist, album, playlist, or genre
+     * @param mimeType The MIME type of the shortcut
+     * @param context The {@link Context} to use to
      */
-    public static final boolean isGoogleTV(final Context context) {
-        return context.getPackageManager().hasSystemFeature("com.google.android.tv");
+    public static void createShortcutIntent(final String displayName, final Long id,
+            final String mimeType, final Activity context) {
+        try {
+            final ImageFetcher fetcher = getImageFetcher(context);
+            Bitmap bitmap = null;
+            if (mimeType.equals(MediaStore.Audio.Albums.CONTENT_TYPE)) {
+                bitmap = fetcher.getCachedBitmap(displayName + Config.ALBUM_ART_SUFFIX);
+            } else {
+                bitmap = fetcher.getCachedBitmap(displayName);
+            }
+            if (bitmap == null) {
+                bitmap = BitmapFactory.decodeResource(context.getResources(),
+                        R.drawable.default_artwork);
+            }
+
+            // Intent used when the icon is touched
+            final Intent shortcutIntent = new Intent(context, ShortcutActivity.class);
+            shortcutIntent.setAction(Intent.ACTION_VIEW);
+            shortcutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            shortcutIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            shortcutIntent.putExtra(Config.ID, id);
+            shortcutIntent.putExtra(Config.NAME, displayName);
+            shortcutIntent.putExtra(Config.MIME_TYPE, mimeType);
+
+            // Intent that actually sets the shortcut
+            final Intent intent = new Intent();
+            intent.putExtra(Intent.EXTRA_SHORTCUT_ICON, BitmapUtils.resizeAndCropCenter(bitmap, 96));
+            intent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, shortcutIntent);
+            intent.putExtra(Intent.EXTRA_SHORTCUT_NAME, displayName);
+            intent.setAction("com.android.launcher.action.INSTALL_SHORTCUT");
+            context.sendBroadcast(intent);
+            Crouton.makeText(context,
+                    displayName + " " + context.getString(R.string.pinned_to_home_screen),
+                    Style.CONFIRM).show();
+        } catch (final Exception e) {
+            Log.e("ApolloUtils", "createShortcutIntent - " + e);
+            Crouton.makeText(
+                    context,
+                    displayName + " "
+                            + context.getString(R.string.could_not_be_pinned_to_home_screen),
+                    Style.ALERT).show();
+        }
+    }
+
+    /**
+     * Runs a piece of code after the next layout run
+     * 
+     * @param view The {@link View} used.
+     * @param runnable The {@link Runnable} used after the next layout run
+     */
+    @SuppressLint("NewApi")
+    public static void doAfterLayout(final View view, final Runnable runnable) {
+        final OnGlobalLayoutListener listener = new OnGlobalLayoutListener() {
+            @SuppressWarnings("deprecation")
+            @Override
+            public void onGlobalLayout() {
+                /* Layout pass done, unregister for further events */
+                if (hasJellyBean()) {
+                    view.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                } else {
+                    view.getViewTreeObserver().removeGlobalOnLayoutListener(this);
+                }
+                runnable.run();
+            }
+        };
+        view.getViewTreeObserver().addOnGlobalLayoutListener(listener);
+    }
+
+    /**
+     * Execute an {@link AsyncTask} on a thread pool
+     * 
+     * @param forceSerial True to force the task to run in serial order
+     * @param task Task to execute
+     * @param args Optional arguments to pass to
+     *            {@link AsyncTask#execute(Object[])}
+     * @param <T> Task argument type
+     */
+    @SuppressLint("NewApi")
+    public static <T> void execute(final boolean forceSerial, final AsyncTask<T, ?, ?> task,
+            final T... args) {
+        final WeakReference<AsyncTask<T, ?, ?>> taskReference = new WeakReference<AsyncTask<T, ?, ?>>(
+                task);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.DONUT) {
+            throw new UnsupportedOperationException(
+                    "This class can only be used on API 4 and newer.");
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB || forceSerial) {
+            taskReference.get().execute(args);
+        } else {
+            taskReference.get().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, args);
+        }
+    }
+
+    /**
+     * Creates a new instance of the {@link ImageCache} and {@link ImageFetcher}
+     * 
+     * @param activity The {@link FragmentActivity} to use.
+     * @return A new {@link ImageFetcher} used to fetch images asynchronously.
+     */
+    public static final ImageFetcher getImageFetcher(final Activity activity) {
+        final ImageFetcher imageFetcher = ImageFetcher.getInstance(activity);
+        imageFetcher.setImageCache(ImageCache.findOrCreateCache(activity));
+        return imageFetcher;
     }
 
     /**
@@ -137,13 +258,41 @@ public final class ApolloUtils {
     }
 
     /**
-     * Used to determine if the device is a tablet or not
+     * Used to know if Apollo was sent into the background
      * 
-     * @param context The {@link Context} to use.
-     * @return True if the device is a tablet, false otherwise.
+     * @param context The {@link Context} to use
      */
-    public static final boolean isTablet(final Context context) {
-        return (context.getResources().getConfiguration().screenLayout & Configuration.SCREENLAYOUT_SIZE_MASK) >= Configuration.SCREENLAYOUT_SIZE_LARGE;
+    public static final boolean isApplicationSentToBackground(final Context context) {
+        final ActivityManager activityManager = (ActivityManager) context
+                .getSystemService(Context.ACTIVITY_SERVICE);
+        final List<RunningTaskInfo> tasks = activityManager.getRunningTasks(1);
+        if (!tasks.isEmpty()) {
+            final ComponentName topActivity = tasks.get(0).topActivity;
+            if (!topActivity.getPackageName().equals(context.getPackageName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Calculate whether a color is light or dark, based on a commonly known
+     * brightness formula.
+     * 
+     * @see {@literal http://en.wikipedia.org/wiki/HSV_color_space%23Lightness}
+     */
+    public static final boolean isColorDark(final int color) {
+        return (30 * Color.red(color) + 59 * Color.green(color) + 11 * Color.blue(color)) / 100 <= BRIGHTNESS_THRESHOLD;
+    }
+
+    /**
+     * Used to determine if the current device is a Google TV
+     * 
+     * @param context The {@link Context} to use
+     * @return True if the device has Google TV, false otherwise
+     */
+    public static final boolean isGoogleTV(final Context context) {
+        return context.getPackageManager().hasSystemFeature("com.google.android.tv");
     }
 
     /**
@@ -154,31 +303,6 @@ public final class ApolloUtils {
      */
     public static final boolean isLandscape(final Context context) {
         return context.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
-    }
-
-    /**
-     * Execute an {@link AsyncTask} on a thread pool
-     * 
-     * @param forceSerial True to force the task to run in serial order
-     * @param task Task to execute
-     * @param args Optional arguments to pass to
-     *            {@link AsyncTask#execute(Object[])}
-     * @param <T> Task argument type
-     */
-    @SuppressLint("NewApi")
-    public static <T> void execute(final boolean forceSerial, final AsyncTask<T, ?, ?> task,
-            final T... args) {
-        final WeakReference<AsyncTask<T, ?, ?>> taskReference = new WeakReference<AsyncTask<T, ?, ?>>(
-                task);
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.DONUT) {
-            throw new UnsupportedOperationException(
-                    "This class can only be used on API 4 and newer.");
-        }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB || forceSerial) {
-            taskReference.get().execute(args);
-        } else {
-            taskReference.get().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, args);
-        }
     }
 
     /**
@@ -204,7 +328,7 @@ public final class ApolloUtils {
         final boolean onlyOnWifi = PreferenceUtils.getInstace(context).onlyOnWifi();
 
         /* Monitor network connections */
-        final ConnectivityManager connectivityManager = (ConnectivityManager)context
+        final ConnectivityManager connectivityManager = (ConnectivityManager) context
                 .getSystemService(Context.CONNECTIVITY_SERVICE);
 
         /* Wi-Fi connection */
@@ -235,6 +359,16 @@ public final class ApolloUtils {
     }
 
     /**
+     * Used to determine if the device is a tablet or not
+     * 
+     * @param context The {@link Context} to use.
+     * @return True if the device is a tablet, false otherwise.
+     */
+    public static final boolean isTablet(final Context context) {
+        return (context.getResources().getConfiguration().screenLayout & Configuration.SCREENLAYOUT_SIZE_MASK) >= Configuration.SCREENLAYOUT_SIZE_LARGE;
+    }
+
+    /**
      * Display a {@link Toast} letting the user know what an item does when long
      * pressed.
      * 
@@ -253,7 +387,7 @@ public final class ApolloUtils {
         final int viewHeight = view.getHeight();
         final int viewCenterX = screenPos[0] + viewWidth / 2;
         final int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
-        final int estimatedToastHeight = (int)(48 * context.getResources().getDisplayMetrics().density);
+        final int estimatedToastHeight = (int) (48 * context.getResources().getDisplayMetrics().density);
 
         final Toast cheatSheet = Toast.makeText(context, view.getContentDescription(),
                 Toast.LENGTH_SHORT);
@@ -273,130 +407,13 @@ public final class ApolloUtils {
     }
 
     /**
-     * @param context The {@link Context} to use.
-     * @return An {@link AlertDialog} used to show the open source licenses used
-     *         in Apollo.
-     */
-    public static final AlertDialog createOpenSourceDialog(final Context context) {
-        final WebView webView = new WebView(context);
-        webView.loadUrl("file:///android_asset/licenses.html");
-        return new AlertDialog.Builder(context).setTitle(R.string.settings_open_source_licenses)
-                .setView(webView)
-                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(final DialogInterface dialog, final int whichButton) {
-                        dialog.dismiss();
-                    }
-                }).create();
-    }
-
-    /**
-     * Calculate whether a color is light or dark, based on a commonly known
-     * brightness formula.
-     * 
-     * @see {@literal http://en.wikipedia.org/wiki/HSV_color_space%23Lightness}
-     */
-    public static final boolean isColorDark(final int color) {
-        return (30 * Color.red(color) + 59 * Color.green(color) + 11 * Color.blue(color)) / 100 <= BRIGHTNESS_THRESHOLD;
-    }
-
-    /**
-     * Runs a piece of code after the next layout run
-     * 
-     * @param view The {@link View} used.
-     * @param runnable The {@link Runnable} used after the next layout run
-     */
-    @SuppressLint("NewApi")
-    public static void doAfterLayout(final View view, final Runnable runnable) {
-        final OnGlobalLayoutListener listener = new OnGlobalLayoutListener() {
-            @SuppressWarnings("deprecation")
-            @Override
-            public void onGlobalLayout() {
-                /* Layout pass done, unregister for further events */
-                if (hasJellyBean()) {
-                    view.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                } else {
-                    view.getViewTreeObserver().removeGlobalOnLayoutListener(this);
-                }
-                runnable.run();
-            }
-        };
-        view.getViewTreeObserver().addOnGlobalLayoutListener(listener);
-    }
-
-    /**
-     * Creates a new instance of the {@link ImageCache} and {@link ImageFetcher}
-     * 
-     * @param activity The {@link FragmentActivity} to use.
-     * @return A new {@link ImageFetcher} used to fetch images asynchronously.
-     */
-    public static final ImageFetcher getImageFetcher(final SherlockFragmentActivity activity) {
-        final ImageFetcher imageFetcher = ImageFetcher.getInstance(activity);
-        imageFetcher.setImageCache(ImageCache.findOrCreateCache(activity));
-        return imageFetcher;
-    }
-
-    /**
-     * Used to create shortcuts for an artist, album, or playlist that is then
-     * placed on the default launcher homescreen
-     * 
-     * @param displayName The shortcut name
-     * @param id The ID of the artist, album, playlist, or genre
-     * @param mimeType The MIME type of the shortcut
-     * @param context The {@link Context} to use to
-     */
-    public static void createShortcutIntent(final String displayName, final Long id,
-            final String mimeType, final SherlockFragmentActivity context) {
-        try {
-            final ImageFetcher fetcher = getImageFetcher(context);
-            Bitmap bitmap = null;
-            if (mimeType.equals(MediaStore.Audio.Albums.CONTENT_TYPE)) {
-                bitmap = fetcher.getCachedBitmap(displayName + Config.ALBUM_ART_SUFFIX);
-            } else {
-                bitmap = fetcher.getCachedBitmap(displayName);
-            }
-            if (bitmap == null) {
-                bitmap = BitmapFactory.decodeResource(context.getResources(),
-                        R.drawable.default_artwork);
-            }
-
-            // Intent used when the icon is touched
-            final Intent shortcutIntent = new Intent(context, ShortcutActivity.class);
-            shortcutIntent.setAction(Intent.ACTION_VIEW);
-            shortcutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            shortcutIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            shortcutIntent.putExtra(Config.ID, id);
-            shortcutIntent.putExtra(Config.NAME, displayName);
-            shortcutIntent.putExtra(Config.MIME_TYPE, mimeType);
-
-            // Intent that actually sets the shortcut
-            final Intent intent = new Intent();
-            intent.putExtra(Intent.EXTRA_SHORTCUT_ICON, BitmapUtils.resizeAndCropCenter(bitmap, 96));
-            intent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, shortcutIntent);
-            intent.putExtra(Intent.EXTRA_SHORTCUT_NAME, displayName);
-            intent.setAction("com.android.launcher.action.INSTALL_SHORTCUT");
-            context.sendBroadcast(intent);
-            Crouton.makeText(context,
-                    displayName + " " + context.getString(R.string.pinned_to_home_screen),
-                    Crouton.STYLE_CONFIRM).show();
-        } catch (final Exception e) {
-            Log.e("ApolloUtils", "createShortcutIntent - " + e);
-            Crouton.makeText(
-                    context,
-                    displayName + " "
-                            + context.getString(R.string.could_not_be_pinned_to_home_screen),
-                    Crouton.STYLE_ALERT).show();
-        }
-    }
-
-    /**
      * Shows the {@link ColorPickerView}
      * 
      * @param context The {@link Context} to use.
      */
     public static void showColorPicker(final Context context) {
         final ColorSchemeDialog colorPickerView = new ColorSchemeDialog(context);
-        colorPickerView.setButton(AlertDialog.BUTTON_POSITIVE,
+        colorPickerView.setButton(DialogInterface.BUTTON_POSITIVE,
                 context.getString(android.R.string.ok), new OnClickListener() {
 
                     @Override
@@ -405,27 +422,14 @@ public final class ApolloUtils {
                                 colorPickerView.getColor());
                     }
                 });
-        colorPickerView.setButton(AlertDialog.BUTTON_NEGATIVE, context.getString(R.string.cancel),
-                (DialogInterface.OnClickListener)null);
+        colorPickerView.setButton(DialogInterface.BUTTON_NEGATIVE,
+                context.getString(R.string.cancel),
+                (DialogInterface.OnClickListener) null);
         colorPickerView.show();
     }
 
-    /**
-     * Used to know if Apollo was sent into the background
-     * 
-     * @param context The {@link Context} to use
-     */
-    public static final boolean isApplicationSentToBackground(final Context context) {
-        final ActivityManager activityManager = (ActivityManager)context
-                .getSystemService(Context.ACTIVITY_SERVICE);
-        final List<RunningTaskInfo> tasks = activityManager.getRunningTasks(1);
-        if (!tasks.isEmpty()) {
-            final ComponentName topActivity = tasks.get(0).topActivity;
-            if (!topActivity.getPackageName().equals(context.getPackageName())) {
-                return true;
-            }
-        }
-        return false;
+    /* This class is never initiated */
+    public ApolloUtils() {
     }
 
 }

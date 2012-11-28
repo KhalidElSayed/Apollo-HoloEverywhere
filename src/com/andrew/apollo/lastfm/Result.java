@@ -33,18 +33,48 @@ import org.w3c.dom.Document;
 public class Result {
 
     public enum Status {
-        OK, FAILED
+        FAILED, OK
     }
 
-    protected Status status;
+    /**
+     * @param httpErrorCode
+     * @param errorMessage
+     * @return
+     */
+    static Result createHttpErrorResult(final int httpErrorCode, final String errorMessage) {
+        final Result r = new Result(errorMessage);
+        r.httpErrorCode = httpErrorCode;
+        return r;
+    }
 
-    protected String errorMessage = null;
+    /**
+     * @param resultDocument
+     * @return
+     */
+    static Result createOkResult(final Document resultDocument) {
+        return new Result(resultDocument);
+    }
+
+    /**
+     * @param errorCode
+     * @param errorMessage
+     * @return
+     */
+    static Result createRestErrorResult(final int errorCode, final String errorMessage) {
+        final Result r = new Result(errorMessage);
+        r.errorCode = errorCode;
+        return r;
+    }
 
     protected int errorCode = -1;
+
+    protected String errorMessage = null;
 
     protected int httpErrorCode = -1;
 
     protected Document resultDocument;
+
+    protected Status status;
 
     /**
      * @param resultDocument
@@ -62,34 +92,31 @@ public class Result {
         this.errorMessage = errorMessage;
     }
 
-    /**
-     * @param resultDocument
-     * @return
-     */
-    static Result createOkResult(final Document resultDocument) {
-        return new Result(resultDocument);
+    public DomElement getContentElement() {
+        if (!isSuccessful()) {
+            return null;
+        }
+        return new DomElement(resultDocument.getDocumentElement()).getChild("*");
     }
 
-    /**
-     * @param httpErrorCode
-     * @param errorMessage
-     * @return
-     */
-    static Result createHttpErrorResult(final int httpErrorCode, final String errorMessage) {
-        final Result r = new Result(errorMessage);
-        r.httpErrorCode = httpErrorCode;
-        return r;
+    public int getErrorCode() {
+        return errorCode;
     }
 
-    /**
-     * @param errorCode
-     * @param errorMessage
-     * @return
-     */
-    static Result createRestErrorResult(final int errorCode, final String errorMessage) {
-        final Result r = new Result(errorMessage);
-        r.errorCode = errorCode;
-        return r;
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public int getHttpErrorCode() {
+        return httpErrorCode;
+    }
+
+    public Document getResultDocument() {
+        return resultDocument;
+    }
+
+    public Status getStatus() {
+        return status;
     }
 
     /**
@@ -100,33 +127,6 @@ public class Result {
      */
     public boolean isSuccessful() {
         return status == Status.OK;
-    }
-
-    public int getErrorCode() {
-        return errorCode;
-    }
-
-    public int getHttpErrorCode() {
-        return httpErrorCode;
-    }
-
-    public Status getStatus() {
-        return status;
-    }
-
-    public Document getResultDocument() {
-        return resultDocument;
-    }
-
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-
-    public DomElement getContentElement() {
-        if (!isSuccessful()) {
-            return null;
-        }
-        return new DomElement(resultDocument.getDocumentElement()).getChild("*");
     }
 
     @Override

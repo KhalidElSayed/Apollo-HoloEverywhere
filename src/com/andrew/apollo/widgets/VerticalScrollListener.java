@@ -21,12 +21,19 @@ import com.andrew.apollo.utils.ApolloUtils;
 @SuppressLint("NewApi")
 public class VerticalScrollListener implements OnScrollListener {
 
+    /** Defines the header to be scrolled. */
+    public interface ScrollableHeader {
+
+        /* Used the pause the disk cache while scrolling */
+        public void onScrollStateChanged(AbsListView view, int scrollState);
+    }
+
     /* Used to determine the off set to scroll the header */
     private final ScrollableHeader mHeader;
 
-    private final ProfileTabCarousel mTabCarousel;
-
     private final int mPageIndex;
+
+    private final ProfileTabCarousel mTabCarousel;
 
     public VerticalScrollListener(final ScrollableHeader header, final ProfileTabCarousel carousel,
             final int pageIndex) {
@@ -75,13 +82,6 @@ public class VerticalScrollListener implements OnScrollListener {
         if (mHeader != null) {
             mHeader.onScrollStateChanged(view, scrollState);
         }
-    }
-
-    /** Defines the header to be scrolled. */
-    public interface ScrollableHeader {
-
-        /* Used the pause the disk cache while scrolling */
-        public void onScrollStateChanged(AbsListView view, int scrollState);
     }
 
 }

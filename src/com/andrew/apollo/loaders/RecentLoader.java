@@ -11,6 +11,9 @@
 
 package com.andrew.apollo.loaders;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import android.content.Context;
 import android.database.Cursor;
 
@@ -21,15 +24,31 @@ import com.andrew.apollo.provider.RecentStore.RecentStoreColumns;
 import com.andrew.apollo.utils.Lists;
 import com.andrew.apollo.utils.MusicUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Used to query {@link RecentStore} and return the last listened to albums.
  * 
  * @author Andrew Neal (andrewdneal@gmail.com)
  */
 public class RecentLoader extends WrappedAsyncTaskLoader<List<Album>> {
+
+    /**
+     * Creates the {@link Cursor} used to run the query.
+     * 
+     * @param context The {@link Context} to use.
+     * @return The {@link Cursor} used to run the album query.
+     */
+    public static final Cursor makeRecentCursor(final Context context) {
+        return RecentStore
+                .getInstance(context)
+                .getReadableDatabase()
+                .query(RecentStoreColumns.NAME,
+                        new String[] {
+                                RecentStoreColumns.ID + " as id", RecentStoreColumns.ID,
+                                RecentStoreColumns.ALBUMNAME, RecentStoreColumns.ARTISTNAME,
+                                RecentStoreColumns.ALBUMSONGCOUNT, RecentStoreColumns.ALBUMYEAR,
+                                RecentStoreColumns.TIMEPLAYED
+                        }, null, null, null, null, RecentStoreColumns.TIMEPLAYED + " DESC");
+    }
 
     /**
      * The result
@@ -97,24 +116,5 @@ public class RecentLoader extends WrappedAsyncTaskLoader<List<Album>> {
             mCursor = null;
         }
         return mAlbumsList;
-    }
-
-    /**
-     * Creates the {@link Cursor} used to run the query.
-     * 
-     * @param context The {@link Context} to use.
-     * @return The {@link Cursor} used to run the album query.
-     */
-    public static final Cursor makeRecentCursor(final Context context) {
-        return RecentStore
-                .getInstance(context)
-                .getReadableDatabase()
-                .query(RecentStoreColumns.NAME,
-                        new String[] {
-                                RecentStoreColumns.ID + " as id", RecentStoreColumns.ID,
-                                RecentStoreColumns.ALBUMNAME, RecentStoreColumns.ARTISTNAME,
-                                RecentStoreColumns.ALBUMSONGCOUNT, RecentStoreColumns.ALBUMYEAR,
-                                RecentStoreColumns.TIMEPLAYED
-                        }, null, null, null, null, RecentStoreColumns.TIMEPLAYED + " DESC");
     }
 }

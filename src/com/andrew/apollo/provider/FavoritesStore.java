@@ -28,41 +28,42 @@ import android.database.sqlite.SQLiteOpenHelper;
  */
 public class FavoritesStore extends SQLiteOpenHelper {
 
-    /* Version constant to increment when the database should be rebuilt */
-    private static final int VERSION = 1;
+    public interface FavoriteColumns {
+
+        /* Album name column */
+        public static final String ALBUMNAME = "albumname";
+
+        /* Artist name column */
+        public static final String ARTISTNAME = "artistname";
+
+        /* Song IDs column */
+        public static final String ID = "songid";
+
+        /* Table name */
+        public static final String NAME = "favorites";
+
+        /* Play count column */
+        public static final String PLAYCOUNT = "playcount";
+
+        /* Song name column */
+        public static final String SONGNAME = "songname";
+    }
 
     /* Name of database file */
     public static final String DATABASENAME = "favorites.db";
 
     private static FavoritesStore sInstance = null;
 
+    /* Version constant to increment when the database should be rebuilt */
+    private static final int VERSION = 1;
+
     /**
-     * Constructor of <code>FavoritesStore</code>
+     * Clear the cache.
      * 
-     * @param context The {@link Context} to use
+     * @param context The {@link Context} to use.
      */
-    public FavoritesStore(final Context context) {
-        super(context, DATABASENAME, null, VERSION);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onCreate(final SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS " + FavoriteColumns.NAME + " (" + FavoriteColumns.ID
-                + " LONG NOT NULL," + FavoriteColumns.SONGNAME + " TEXT NOT NULL,"
-                + FavoriteColumns.ALBUMNAME + " TEXT NOT NULL," + FavoriteColumns.ARTISTNAME
-                + " TEXT NOT NULL," + FavoriteColumns.PLAYCOUNT + " LONG NOT NULL);");
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onUpgrade(final SQLiteDatabase db, final int oldVersion, final int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + FavoriteColumns.NAME);
-        onCreate(db);
+    public static void deleteDatabase(final Context context) {
+        context.deleteDatabase(DATABASENAME);
     }
 
     /**
@@ -74,6 +75,15 @@ public class FavoritesStore extends SQLiteOpenHelper {
             sInstance = new FavoritesStore(context.getApplicationContext());
         }
         return sInstance;
+    }
+
+    /**
+     * Constructor of <code>FavoritesStore</code>
+     * 
+     * @param context The {@link Context} to use
+     */
+    public FavoritesStore(final Context context) {
+        super(context, DATABASENAME, null, VERSION);
     }
 
     /**
@@ -103,47 +113,12 @@ public class FavoritesStore extends SQLiteOpenHelper {
         values.put(FavoriteColumns.PLAYCOUNT, playCount != 0 ? playCount + 1 : 1);
 
         database.delete(FavoriteColumns.NAME, FavoriteColumns.ID + " = ?", new String[] {
-            String.valueOf(songId)
+                String.valueOf(songId)
         });
         database.insert(FavoriteColumns.NAME, null, values);
         database.setTransactionSuccessful();
         database.endTransaction();
 
-    }
-
-    /**
-     * Used to retrieve a single song Id from our database
-     * 
-     * @param songId The song Id to reference
-     * @return The song Id
-     */
-    public Long getSongId(final Long songId) {
-        if (songId <= -1) {
-            return null;
-        }
-
-        final SQLiteDatabase database = getReadableDatabase();
-        final String[] projection = new String[] {
-                FavoriteColumns.ID, FavoriteColumns.SONGNAME, FavoriteColumns.ALBUMNAME,
-                FavoriteColumns.ARTISTNAME, FavoriteColumns.PLAYCOUNT
-        };
-        final String selection = FavoriteColumns.ID + "=?";
-        final String[] having = new String[] {
-            String.valueOf(songId)
-        };
-        Cursor cursor = database.query(FavoriteColumns.NAME, projection, selection, having, null,
-                null, null, null);
-        if (cursor != null && cursor.moveToFirst()) {
-            final Long id = cursor.getLong(cursor.getColumnIndexOrThrow(FavoriteColumns.ID));
-            cursor.close();
-            cursor = null;
-            return id;
-        }
-        if (cursor != null) {
-            cursor.close();
-            cursor = null;
-        }
-        return null;
     }
 
     /**
@@ -164,7 +139,7 @@ public class FavoritesStore extends SQLiteOpenHelper {
         };
         final String selection = FavoriteColumns.ID + "=?";
         final String[] having = new String[] {
-            String.valueOf(songId)
+                String.valueOf(songId)
         };
         Cursor cursor = database.query(FavoriteColumns.NAME, projection, selection, having, null,
                 null, null, null);
@@ -180,16 +155,73 @@ public class FavoritesStore extends SQLiteOpenHelper {
             cursor = null;
         }
 
-        return (long)0;
+        return (long) 0;
     }
 
     /**
-     * Clear the cache.
+     * Used to retrieve a single song Id from our database
      * 
-     * @param context The {@link Context} to use.
+     * @param songId The song Id to reference
+     * @return The song Id
      */
-    public static void deleteDatabase(final Context context) {
-        context.deleteDatabase(DATABASENAME);
+    public Long getSongId(final Long songId) {
+        if (songId <= -1) {
+            return null;
+        }
+
+        final SQLiteDatabase database = getReadableDatabase();
+        final String[] projection = new String[] {
+                FavoriteColumns.ID, FavoriteColumns.SONGNAME, FavoriteColumns.ALBUMNAME,
+                FavoriteColumns.ARTISTNAME, FavoriteColumns.PLAYCOUNT
+        };
+        final String selection = FavoriteColumns.ID + "=?";
+        final String[] having = new String[] {
+                String.valueOf(songId)
+        };
+        Cursor cursor = database.query(FavoriteColumns.NAME, projection, selection, having, null,
+                null, null, null);
+        if (cursor != null && cursor.moveToFirst()) {
+            final Long id = cursor.getLong(cursor.getColumnIndexOrThrow(FavoriteColumns.ID));
+            cursor.close();
+            cursor = null;
+            return id;
+        }
+        if (cursor != null) {
+            cursor.close();
+            cursor = null;
+        }
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onCreate(final SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + FavoriteColumns.NAME + " (" + FavoriteColumns.ID
+                + " LONG NOT NULL," + FavoriteColumns.SONGNAME + " TEXT NOT NULL,"
+                + FavoriteColumns.ALBUMNAME + " TEXT NOT NULL," + FavoriteColumns.ARTISTNAME
+                + " TEXT NOT NULL," + FavoriteColumns.PLAYCOUNT + " LONG NOT NULL);");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onUpgrade(final SQLiteDatabase db, final int oldVersion, final int newVersion) {
+        db.execSQL("DROP TABLE IF EXISTS " + FavoriteColumns.NAME);
+        onCreate(db);
+    }
+
+    /**
+     * @param item The song Id to remove
+     */
+    public void removeItem(final Long songId) {
+        final SQLiteDatabase database = getReadableDatabase();
+        database.delete(FavoriteColumns.NAME, FavoriteColumns.ID + " = ?", new String[] {
+                String.valueOf(songId)
+        });
+
     }
 
     /**
@@ -203,38 +235,6 @@ public class FavoritesStore extends SQLiteOpenHelper {
             removeItem(songId);
         }
 
-    }
-
-    /**
-     * @param item The song Id to remove
-     */
-    public void removeItem(final Long songId) {
-        final SQLiteDatabase database = getReadableDatabase();
-        database.delete(FavoriteColumns.NAME, FavoriteColumns.ID + " = ?", new String[] {
-            String.valueOf(songId)
-        });
-
-    }
-
-    public interface FavoriteColumns {
-
-        /* Table name */
-        public static final String NAME = "favorites";
-
-        /* Song IDs column */
-        public static final String ID = "songid";
-
-        /* Song name column */
-        public static final String SONGNAME = "songname";
-
-        /* Album name column */
-        public static final String ALBUMNAME = "albumname";
-
-        /* Artist name column */
-        public static final String ARTISTNAME = "artistname";
-
-        /* Play count column */
-        public static final String PLAYCOUNT = "playcount";
     }
 
 }

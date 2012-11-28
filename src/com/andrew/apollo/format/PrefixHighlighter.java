@@ -24,31 +24,16 @@ import com.andrew.apollo.utils.PreferenceUtils;
  */
 public class PrefixHighlighter {
 
+    private ForegroundColorSpan mPrefixColorSpan;
+
     /* Color used when highlighting the prefixes */
     private final int mPrefixHighlightColor;
-
-    private ForegroundColorSpan mPrefixColorSpan;
 
     /**
      * @param prefixHighlightColor The color used to highlight the prefixes.
      */
     public PrefixHighlighter(final Context context) {
         mPrefixHighlightColor = PreferenceUtils.getInstace(context).getDefaultThemeColor(context);
-    }
-
-    /**
-     * Sets the text on the given {@link TextView}, highlighting the word that
-     * matches the given prefix.
-     * 
-     * @param view The {@link TextView} on which to set the text
-     * @param text The string to use as the text
-     * @param prefix The prefix to look for
-     */
-    public void setText(final TextView view, final String text, final char[] prefix) {
-        if (view == null || TextUtils.isEmpty(text) || prefix == null || prefix.length == 0) {
-            return;
-        }
-        view.setText(apply(text, prefix));
     }
 
     /**
@@ -119,6 +104,21 @@ public class PrefixHighlighter {
             }
         }
         return -1;
+    }
+
+    /**
+     * Sets the text on the given {@link TextView}, highlighting the word that
+     * matches the given prefix.
+     * 
+     * @param view The {@link TextView} on which to set the text
+     * @param text The string to use as the text
+     * @param prefix The prefix to look for
+     */
+    public void setText(final TextView view, final String text, final char[] prefix) {
+        if (view == null || TextUtils.isEmpty(text) || prefix == null || prefix.length == 0) {
+            return;
+        }
+        view.setText(apply(text, prefix));
     }
 
 }

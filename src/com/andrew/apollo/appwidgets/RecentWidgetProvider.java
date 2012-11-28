@@ -44,21 +44,31 @@ import com.andrew.apollo.utils.MusicUtils;
 @TargetApi(11)
 public class RecentWidgetProvider extends AppWidgetProvider {
 
-    public static final String SET_ACTION = "set_action";
+    public static final String CLICK_ACTION = "com.andrew.apollo.recents.appwidget.action.CLICK";
+
+    public static final String CMDAPPWIDGETUPDATE = "app_widget_recents_update";
+
+    private static RecentWidgetProvider mInstance;
 
     public static final String OPEN_PROFILE = "open_profile";
 
     public static final String PLAY_ALBUM = "play_album";
 
-    public static final String CMDAPPWIDGETUPDATE = "app_widget_recents_update";
-
-    public static final String CLICK_ACTION = "com.andrew.apollo.recents.appwidget.action.CLICK";
-
     public static final String REFRESH_ACTION = "com.andrew.apollo.recents.appwidget.action.REFRESH";
+
+    public static final String SET_ACTION = "set_action";
 
     private static Handler sWorkerQueue;
 
-    private static RecentWidgetProvider mInstance;
+    /**
+     * @return A singelton of {@link RecentWidgetProvider}
+     */
+    public static synchronized RecentWidgetProvider getInstance() {
+        if (mInstance == null) {
+            mInstance = new RecentWidgetProvider();
+        }
+        return mInstance;
+    }
 
     private RemoteViews mViews;
 
@@ -73,51 +83,97 @@ public class RecentWidgetProvider extends AppWidgetProvider {
         sWorkerQueue = new Handler(workerThread.getLooper());
     }
 
-    /**
-     * @return A singelton of {@link RecentWidgetProvider}
-     */
-    public static synchronized RecentWidgetProvider getInstance() {
-        if (mInstance == null) {
-            mInstance = new RecentWidgetProvider();
+    @SuppressWarnings("deprecation")
+    @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
+    private void compatSetRemoteAdapter(final RemoteViews rv, final int appWidgetId,
+            final Intent intent) {
+        if (ApolloUtils.hasICS()) {
+            rv.setRemoteAdapter(R.id.app_widget_recents_list, intent);
+        } else {
+            rv.setRemoteAdapter(appWidgetId, R.id.app_widget_recents_list, intent);
         }
-        return mInstance;
     }
 
     /**
-     * {@inheritDoc}
+     * Check against {@link AppWidgetManager} if there are any instances of this
+     * widget.
      */
-    @Override
-    public void onUpdate(final Context context, final AppWidgetManager appWidgetManager,
-            final int[] appWidgetIds) {
-        for (final int appWidgetId : appWidgetIds) {
-            // Create the remote views
-            mViews = new RemoteViews(context.getPackageName(), R.layout.app_widget_recents);
+    private boolean hasInstances(final Context context) {
+        final AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+        final int[] appWidgetIds = appWidgetManager.getAppWidgetIds(new ComponentName(context, this
+                .getClass()));
+        return appWidgetIds.length > 0;
+    }
 
-            // Link actions buttons to intents
-            linkButtons(context, mViews, false);
+    /**
+     * Link up various button actions using {@link PendingIntents}.
+     * 
+     * @param playerActive True if player is active in background, which means
+     *            widget click will launch {@link AudioPlayerActivity},
+     *            otherwise we launch {@link MusicBrowserActivity}.
+     */
+    private void linkButtons(final Context context, final RemoteViews views,
+            final boolean playerActive) {
+        Intent action;
+        PendingIntent pendingIntent;
 
-            final Intent intent = new Intent(context, RecentWidgetService.class);
-            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-            intent.setData(Uri.parse(intent.toUri(Intent.URI_INTENT_SCHEME)));
-            compatSetRemoteAdapter(mViews, appWidgetId, intent);
+        final ComponentName serviceName = new ComponentName(context, MusicPlaybackService.class);
 
-            final Intent updateIntent = new Intent(MusicPlaybackService.SERVICECMD);
-            updateIntent.putExtra(MusicPlaybackService.CMDNAME,
-                    RecentWidgetProvider.CMDAPPWIDGETUPDATE);
-            updateIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds);
-            updateIntent.setFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
-            context.sendBroadcast(updateIntent);
+        // Now playing
+        if (playerActive) {
+            action = new Intent(context, AudioPlayerActivity.class);
+            pendingIntent = PendingIntent.getActivity(context, 0, action, 0);
+            views.setOnClickPendingIntent(R.id.app_widget_recents_action_bar, pendingIntent);
+        } else {
+            // Home
+            action = new Intent(context, HomeActivity.class);
+            pendingIntent = PendingIntent.getActivity(context, 0, action, 0);
+            views.setOnClickPendingIntent(R.id.app_widget_recents_action_bar, pendingIntent);
+        }
 
-            final Intent onClickIntent = new Intent(context, RecentWidgetProvider.class);
-            onClickIntent.setAction(RecentWidgetProvider.CLICK_ACTION);
-            onClickIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-            onClickIntent.setData(Uri.parse(onClickIntent.toUri(Intent.URI_INTENT_SCHEME)));
-            final PendingIntent onClickPendingIntent = PendingIntent.getBroadcast(context, 0,
-                    onClickIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-            mViews.setPendingIntentTemplate(R.id.app_widget_recents_list, onClickPendingIntent);
+        // Previous track
+        action = new Intent(MusicPlaybackService.PREVIOUS_ACTION);
+        action.setComponent(serviceName);
+        pendingIntent = PendingIntent.getService(context, 0, action, 0);
+        views.setOnClickPendingIntent(R.id.app_widget_recents_previous, pendingIntent);
 
-            // Update the widget
-            appWidgetManager.updateAppWidget(appWidgetId, mViews);
+        // Play and pause
+        action = new Intent(MusicPlaybackService.TOGGLEPAUSE_ACTION);
+        action.setComponent(serviceName);
+        pendingIntent = PendingIntent.getService(context, 0, action, 0);
+        views.setOnClickPendingIntent(R.id.app_widget_recents_play, pendingIntent);
+
+        // Next track
+        action = new Intent(MusicPlaybackService.NEXT_ACTION);
+        action.setComponent(serviceName);
+        pendingIntent = PendingIntent.getService(context, 0, action, 0);
+        views.setOnClickPendingIntent(R.id.app_widget_recents_next, pendingIntent);
+    }
+
+    /**
+     * Handle a change notification coming over from
+     * {@link MusicPlaybackService}
+     */
+    public void notifyChange(final MusicPlaybackService service, final String what) {
+        if (hasInstances(service)) {
+            if (MusicPlaybackService.PLAYSTATE_CHANGED.equals(what)) {
+                performUpdate(service, null);
+            } else if (MusicPlaybackService.META_CHANGED.equals(what)) {
+                synchronized (service) {
+                    sWorkerQueue.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            final AppWidgetManager appWidgetManager = AppWidgetManager
+                                    .getInstance(service);
+                            final ComponentName componentName = new ComponentName(service,
+                                    RecentWidgetProvider.class);
+                            appWidgetManager.notifyAppWidgetViewDataChanged(
+                                    appWidgetManager.getAppWidgetIds(componentName),
+                                    R.id.app_widget_recents_list);
+                        }
+                    });
+                }
+            }
         }
     }
 
@@ -168,61 +224,41 @@ public class RecentWidgetProvider extends AppWidgetProvider {
         super.onReceive(context, intent);
     }
 
-    @SuppressWarnings("deprecation")
-    @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
-    private void compatSetRemoteAdapter(final RemoteViews rv, final int appWidgetId,
-            final Intent intent) {
-        if (ApolloUtils.hasICS()) {
-            rv.setRemoteAdapter(R.id.app_widget_recents_list, intent);
-        } else {
-            rv.setRemoteAdapter(appWidgetId, R.id.app_widget_recents_list, intent);
-        }
-    }
-
     /**
-     * Check against {@link AppWidgetManager} if there are any instances of this
-     * widget.
+     * {@inheritDoc}
      */
-    private boolean hasInstances(final Context context) {
-        final AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-        final int[] appWidgetIds = appWidgetManager.getAppWidgetIds(new ComponentName(context, this
-                .getClass()));
-        return appWidgetIds.length > 0;
-    }
+    @Override
+    public void onUpdate(final Context context, final AppWidgetManager appWidgetManager,
+            final int[] appWidgetIds) {
+        for (final int appWidgetId : appWidgetIds) {
+            // Create the remote views
+            mViews = new RemoteViews(context.getPackageName(), R.layout.app_widget_recents);
 
-    private void pushUpdate(final Context context, final int[] appWidgetIds, final RemoteViews views) {
-        final AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-        if (appWidgetIds != null) {
-            appWidgetManager.updateAppWidget(appWidgetIds, views);
-        } else {
-            appWidgetManager.updateAppWidget(new ComponentName(context, this.getClass()), views);
-        }
-    }
+            // Link actions buttons to intents
+            linkButtons(context, mViews, false);
 
-    /**
-     * Handle a change notification coming over from
-     * {@link MusicPlaybackService}
-     */
-    public void notifyChange(final MusicPlaybackService service, final String what) {
-        if (hasInstances(service)) {
-            if (MusicPlaybackService.PLAYSTATE_CHANGED.equals(what)) {
-                performUpdate(service, null);
-            } else if (MusicPlaybackService.META_CHANGED.equals(what)) {
-                synchronized (service) {
-                    sWorkerQueue.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            final AppWidgetManager appWidgetManager = AppWidgetManager
-                                    .getInstance(service);
-                            final ComponentName componentName = new ComponentName(service,
-                                    RecentWidgetProvider.class);
-                            appWidgetManager.notifyAppWidgetViewDataChanged(
-                                    appWidgetManager.getAppWidgetIds(componentName),
-                                    R.id.app_widget_recents_list);
-                        }
-                    });
-                }
-            }
+            final Intent intent = new Intent(context, RecentWidgetService.class);
+            intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+            intent.setData(Uri.parse(intent.toUri(Intent.URI_INTENT_SCHEME)));
+            compatSetRemoteAdapter(mViews, appWidgetId, intent);
+
+            final Intent updateIntent = new Intent(MusicPlaybackService.SERVICECMD);
+            updateIntent.putExtra(MusicPlaybackService.CMDNAME,
+                    RecentWidgetProvider.CMDAPPWIDGETUPDATE);
+            updateIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds);
+            updateIntent.setFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
+            context.sendBroadcast(updateIntent);
+
+            final Intent onClickIntent = new Intent(context, RecentWidgetProvider.class);
+            onClickIntent.setAction(RecentWidgetProvider.CLICK_ACTION);
+            onClickIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+            onClickIntent.setData(Uri.parse(onClickIntent.toUri(Intent.URI_INTENT_SCHEME)));
+            final PendingIntent onClickPendingIntent = PendingIntent.getBroadcast(context, 0,
+                    onClickIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+            mViews.setPendingIntentTemplate(R.id.app_widget_recents_list, onClickPendingIntent);
+
+            // Update the widget
+            appWidgetManager.updateAppWidget(appWidgetId, mViews);
         }
     }
 
@@ -252,49 +288,13 @@ public class RecentWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    /**
-     * Link up various button actions using {@link PendingIntents}.
-     * 
-     * @param playerActive True if player is active in background, which means
-     *            widget click will launch {@link AudioPlayerActivity},
-     *            otherwise we launch {@link MusicBrowserActivity}.
-     */
-    private void linkButtons(final Context context, final RemoteViews views,
-            final boolean playerActive) {
-        Intent action;
-        PendingIntent pendingIntent;
-
-        final ComponentName serviceName = new ComponentName(context, MusicPlaybackService.class);
-
-        // Now playing
-        if (playerActive) {
-            action = new Intent(context, AudioPlayerActivity.class);
-            pendingIntent = PendingIntent.getActivity(context, 0, action, 0);
-            views.setOnClickPendingIntent(R.id.app_widget_recents_action_bar, pendingIntent);
+    private void pushUpdate(final Context context, final int[] appWidgetIds, final RemoteViews views) {
+        final AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+        if (appWidgetIds != null) {
+            appWidgetManager.updateAppWidget(appWidgetIds, views);
         } else {
-            // Home
-            action = new Intent(context, HomeActivity.class);
-            pendingIntent = PendingIntent.getActivity(context, 0, action, 0);
-            views.setOnClickPendingIntent(R.id.app_widget_recents_action_bar, pendingIntent);
+            appWidgetManager.updateAppWidget(new ComponentName(context, this.getClass()), views);
         }
-
-        // Previous track
-        action = new Intent(MusicPlaybackService.PREVIOUS_ACTION);
-        action.setComponent(serviceName);
-        pendingIntent = PendingIntent.getService(context, 0, action, 0);
-        views.setOnClickPendingIntent(R.id.app_widget_recents_previous, pendingIntent);
-
-        // Play and pause
-        action = new Intent(MusicPlaybackService.TOGGLEPAUSE_ACTION);
-        action.setComponent(serviceName);
-        pendingIntent = PendingIntent.getService(context, 0, action, 0);
-        views.setOnClickPendingIntent(R.id.app_widget_recents_play, pendingIntent);
-
-        // Next track
-        action = new Intent(MusicPlaybackService.NEXT_ACTION);
-        action.setComponent(serviceName);
-        pendingIntent = PendingIntent.getService(context, 0, action, 0);
-        views.setOnClickPendingIntent(R.id.app_widget_recents_next, pendingIntent);
     }
 
 }

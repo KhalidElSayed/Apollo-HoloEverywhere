@@ -35,6 +35,15 @@ final class ItemFactoryBuilder {
 
     private final static ItemFactoryBuilder INSTANCE = new ItemFactoryBuilder();
 
+    /**
+     * Retrieve the instance of the <code>ItemFactoryBuilder</code>.
+     * 
+     * @return the instance
+     */
+    public static ItemFactoryBuilder getFactoryBuilder() {
+        return INSTANCE;
+    }
+
     @SuppressWarnings("rawtypes")
     private final Map<Class, ItemFactory> factories = new HashMap<Class, ItemFactory>();
 
@@ -43,15 +52,6 @@ final class ItemFactoryBuilder {
         addItemFactory(Album.class, Album.FACTORY);
         addItemFactory(Artist.class, Artist.FACTORY);
         addItemFactory(Image.class, Image.FACTORY);
-    }
-
-    /**
-     * Retrieve the instance of the <code>ItemFactoryBuilder</code>.
-     * 
-     * @return the instance
-     */
-    public static ItemFactoryBuilder getFactoryBuilder() {
-        return INSTANCE;
     }
 
     /**

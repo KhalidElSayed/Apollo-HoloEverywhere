@@ -11,25 +11,28 @@
 
 package com.andrew.apollo.ui.fragments;
 
+import java.util.List;
+
+import org.holoeverywhere.LayoutInflater;
+import org.holoeverywhere.app.Fragment;
+import org.holoeverywhere.widget.ListView;
+import org.holoeverywhere.widget.TextView;
+
 import android.content.Intent;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.support.v4.app.Fragment;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.content.Loader;
-import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
-import android.view.LayoutInflater;
-import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.AdapterView.OnItemClickListener;
-import android.widget.ListView;
-import android.widget.TextView;
 
-import com.actionbarsherlock.app.SherlockFragment;
+import com.actionbarsherlock.view.ContextMenu;
+import com.actionbarsherlock.view.Menu;
+import com.actionbarsherlock.view.MenuItem;
 import com.andrew.apollo.Config;
 import com.andrew.apollo.R;
 import com.andrew.apollo.adapters.GenreAdapter;
@@ -40,14 +43,12 @@ import com.andrew.apollo.recycler.RecycleHolder;
 import com.andrew.apollo.ui.activities.ProfileActivity;
 import com.andrew.apollo.utils.MusicUtils;
 
-import java.util.List;
-
 /**
  * This class is used to display all of the genres on a user's device.
  * 
  * @author Andrew Neal (andrewdneal@gmail.com)
  */
-public class GenreFragment extends SherlockFragment implements LoaderCallbacks<List<Genre>>,
+public class GenreFragment extends Fragment implements LoaderCallbacks<List<Genre>>,
         OnItemClickListener {
 
     /**
@@ -61,24 +62,9 @@ public class GenreFragment extends SherlockFragment implements LoaderCallbacks<L
     private static final int LOADER = 0;
 
     /**
-     * Fragment UI
-     */
-    private ViewGroup mRootView;
-
-    /**
      * The adapter for the list
      */
     private GenreAdapter mAdapter;
-
-    /**
-     * The list view
-     */
-    private ListView mListView;
-
-    /**
-     * Genre song list
-     */
-    private long[] mGenreList;
 
     /**
      * Represents a genre
@@ -86,40 +72,24 @@ public class GenreFragment extends SherlockFragment implements LoaderCallbacks<L
     private Genre mGenre;
 
     /**
+     * Genre song list
+     */
+    private long[] mGenreList;
+
+    /**
+     * The list view
+     */
+    private ListView mListView;
+
+    /**
+     * Fragment UI
+     */
+    private ViewGroup mRootView;
+
+    /**
      * Empty constructor as per the {@link Fragment} documentation
      */
     public GenreFragment() {
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onCreate(final Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        // Create the adpater
-        mAdapter = new GenreAdapter(getSherlockActivity(), R.layout.list_item_simple);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public View onCreateView(final LayoutInflater inflater, final ViewGroup container,
-            final Bundle savedInstanceState) {
-        // The View for the fragment's UI
-        mRootView = (ViewGroup)inflater.inflate(R.layout.list_base, null);
-        // Initialize the list
-        mListView = (ListView)mRootView.findViewById(R.id.list_base);
-        // Set the data behind the list
-        mListView.setAdapter(mAdapter);
-        // Release any references to the recycled Views
-        mListView.setRecyclerListener(new RecycleHolder());
-        // Listen for ContextMenus to be created
-        mListView.setOnCreateContextMenuListener(this);
-        // Show the albums and songs from the selected genre
-        mListView.setOnItemClickListener(this);
-        return mRootView;
     }
 
     /**
@@ -138,15 +108,45 @@ public class GenreFragment extends SherlockFragment implements LoaderCallbacks<L
      * {@inheritDoc}
      */
     @Override
+    public boolean onContextItemSelected(final MenuItem item) {
+        if (item.getGroupId() == GROUP_ID) {
+            switch (item.getItemId()) {
+                case FragmentMenuItems.PLAY_SELECTION:
+                    MusicUtils.playAll(getSupportActivity(), mGenreList, 0, false);
+                    return true;
+                case FragmentMenuItems.ADD_TO_QUEUE:
+                    MusicUtils.addToQueue(getSupportActivity(), mGenreList);
+                    return true;
+                default:
+                    break;
+            }
+        }
+        return super.onContextItemSelected(item);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onCreate(final Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        // Create the adpater
+        mAdapter = new GenreAdapter(getSupportActivity(), R.layout.list_item_simple);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void onCreateContextMenu(final ContextMenu menu, final View v,
             final ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, v, menuInfo);
         // Get the position of the selected item
-        final AdapterContextMenuInfo info = (AdapterContextMenuInfo)menuInfo;
+        final AdapterContextMenuInfo info = (AdapterContextMenuInfo) menuInfo;
         // Create a new genre
         mGenre = mAdapter.getItem(info.position);
         // Create a list of the genre's songs
-        mGenreList = MusicUtils.getSongListForGenre(getSherlockActivity(), mGenre.mGenreId);
+        mGenreList = MusicUtils.getSongListForGenre(getSupportActivity(), mGenre.mGenreId);
 
         // Play the genre
         menu.add(GROUP_ID, FragmentMenuItems.PLAY_SELECTION, Menu.NONE,
@@ -159,20 +159,29 @@ public class GenreFragment extends SherlockFragment implements LoaderCallbacks<L
      * {@inheritDoc}
      */
     @Override
-    public boolean onContextItemSelected(final android.view.MenuItem item) {
-        if (item.getGroupId() == GROUP_ID) {
-            switch (item.getItemId()) {
-                case FragmentMenuItems.PLAY_SELECTION:
-                    MusicUtils.playAll(getSherlockActivity(), mGenreList, 0, false);
-                    return true;
-                case FragmentMenuItems.ADD_TO_QUEUE:
-                    MusicUtils.addToQueue(getSherlockActivity(), mGenreList);
-                    return true;
-                default:
-                    break;
-            }
-        }
-        return super.onContextItemSelected(item);
+    public Loader<List<Genre>> onCreateLoader(final int id, final Bundle args) {
+        return new GenreLoader(getSupportActivity());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public View onCreateView(final LayoutInflater inflater, final ViewGroup container,
+            final Bundle savedInstanceState) {
+        // The View for the fragment's UI
+        mRootView = (ViewGroup) inflater.inflate(R.layout.list_base, null);
+        // Initialize the list
+        mListView = (ListView) mRootView.findViewById(R.id.list_base);
+        // Set the data behind the list
+        mListView.setAdapter(mAdapter);
+        // Release any references to the recycled Views
+        mListView.setRecyclerListener(new RecycleHolder());
+        // Listen for ContextMenus to be created
+        mListView.setOnCreateContextMenuListener(this);
+        // Show the albums and songs from the selected genre
+        mListView.setOnItemClickListener(this);
+        return mRootView;
     }
 
     /**
@@ -189,7 +198,7 @@ public class GenreFragment extends SherlockFragment implements LoaderCallbacks<L
         bundle.putString(Config.NAME, mGenre.mGenreName);
 
         // Create the intent to launch the profile activity
-        final Intent intent = new Intent(getSherlockActivity(), ProfileActivity.class);
+        final Intent intent = new Intent(getSupportActivity(), ProfileActivity.class);
         intent.putExtras(bundle);
         startActivity(intent);
     }
@@ -198,8 +207,9 @@ public class GenreFragment extends SherlockFragment implements LoaderCallbacks<L
      * {@inheritDoc}
      */
     @Override
-    public Loader<List<Genre>> onCreateLoader(final int id, final Bundle args) {
-        return new GenreLoader(getSherlockActivity());
+    public void onLoaderReset(final Loader<List<Genre>> loader) {
+        // Clear the data in the adapter
+        mAdapter.unload();
     }
 
     /**
@@ -210,7 +220,7 @@ public class GenreFragment extends SherlockFragment implements LoaderCallbacks<L
         // Check for any errors
         if (data.isEmpty()) {
             // Set the empty text
-            final TextView empty = (TextView)mRootView.findViewById(R.id.empty);
+            final TextView empty = (TextView) mRootView.findViewById(R.id.empty);
             empty.setText(getString(R.string.empty_music));
             mListView.setEmptyView(empty);
             return;
@@ -224,15 +234,6 @@ public class GenreFragment extends SherlockFragment implements LoaderCallbacks<L
         }
         // Build the cache
         mAdapter.buildCache();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onLoaderReset(final Loader<List<Genre>> loader) {
-        // Clear the data in the adapter
-        mAdapter.unload();
     }
 
 }

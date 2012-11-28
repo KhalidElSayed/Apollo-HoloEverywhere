@@ -11,10 +11,11 @@
 
 package com.andrew.apollo.widgets.theme;
 
+import org.holoeverywhere.widget.LinearLayout;
+
 import android.content.Context;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.util.AttributeSet;
-import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
 import com.andrew.apollo.R;
@@ -51,7 +52,7 @@ public class BottomActionBar extends RelativeLayout {
     protected void onFinishInflate() {
         super.onFinishInflate();
         // Theme the selector
-        final LinearLayout bottomActionBar = (LinearLayout)findViewById(R.id.bottom_action_bar);
+        final LinearLayout bottomActionBar = (LinearLayout) findViewById(R.id.bottom_action_bar);
         bottomActionBar.setBackgroundDrawable(new HoloSelector(getContext()));
     }
 }

@@ -13,18 +13,20 @@ package com.andrew.apollo.ui.fragments;
 
 import static com.andrew.apollo.utils.PreferenceUtils.ARTIST_LAYOUT;
 
-import android.app.Activity;
+import java.util.List;
+
+import org.holoeverywhere.LayoutInflater;
+import org.holoeverywhere.app.Activity;
+import org.holoeverywhere.app.Fragment;
+import org.holoeverywhere.widget.ListView;
+import org.holoeverywhere.widget.TextView;
+
 import android.os.Bundle;
 import android.os.SystemClock;
-import android.support.v4.app.Fragment;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.content.Loader;
 import android.text.TextUtils;
-import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.SubMenu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AbsListView;
@@ -33,10 +35,11 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.GridView;
-import android.widget.ListView;
-import android.widget.TextView;
 
-import com.actionbarsherlock.app.SherlockFragment;
+import com.actionbarsherlock.view.ContextMenu;
+import com.actionbarsherlock.view.Menu;
+import com.actionbarsherlock.view.MenuItem;
+import com.actionbarsherlock.view.SubMenu;
 import com.andrew.apollo.MusicStateListener;
 import com.andrew.apollo.R;
 import com.andrew.apollo.adapters.ArtistAdapter;
@@ -53,14 +56,12 @@ import com.andrew.apollo.utils.NavUtils;
 import com.andrew.apollo.utils.PreferenceUtils;
 import com.viewpagerindicator.TitlePageIndicator;
 
-import java.util.List;
-
 /**
  * This class is used to display all of the artists on a user's device.
  * 
  * @author Andrew Neal (andrewdneal@gmail.com)
  */
-public class ArtistFragment extends SherlockFragment implements LoaderCallbacks<List<Artist>>,
+public class ArtistFragment extends Fragment implements LoaderCallbacks<List<Artist>>,
         OnScrollListener, OnItemClickListener, MusicStateListener {
 
     /**
@@ -69,24 +70,29 @@ public class ArtistFragment extends SherlockFragment implements LoaderCallbacks<
     private static final int GROUP_ID = 2;
 
     /**
-     * Grid view column count. ONE - list, TWO - normal grid, FOUR - landscape
-     */
-    private static final int ONE = 1, TWO = 2, FOUR = 4;
-
-    /**
      * LoaderCallbacks identifier
      */
     private static final int LOADER = 0;
 
     /**
-     * Fragment UI
+     * Grid view column count. ONE - list, TWO - normal grid, FOUR - landscape
      */
-    private ViewGroup mRootView;
+    private static final int ONE = 1, TWO = 2, FOUR = 4;
 
     /**
      * The adapter for the grid
      */
     private ArtistAdapter mAdapter;
+
+    /**
+     * Represents an artist
+     */
+    private Artist mArtist;
+
+    /**
+     * Artist song list
+     */
+    private long[] mArtistList;
 
     /**
      * The grid view
@@ -99,14 +105,9 @@ public class ArtistFragment extends SherlockFragment implements LoaderCallbacks<
     private ListView mListView;
 
     /**
-     * Artist song list
+     * Fragment UI
      */
-    private long[] mArtistList;
-
-    /**
-     * Represents an artist
-     */
-    private Artist mArtist;
+    private ViewGroup mRootView;
 
     /**
      * True if the list should execute {@code #restartLoader()}.
@@ -120,48 +121,85 @@ public class ArtistFragment extends SherlockFragment implements LoaderCallbacks<
     }
 
     /**
-     * {@inheritDoc}
+     * @return The position of an item in the list or grid based on the name of
+     *         the currently playing artist.
      */
-    @Override
-    public void onAttach(final Activity activity) {
-        super.onAttach(activity);
-        // Register the music status listener
-        ((BaseActivity)activity).setMusicStateListenerListener(this);
+    private int getItemPositionByArtist() {
+        final String artistName = String.valueOf(MusicUtils.getCurrentArtistId());
+        if (mAdapter == null || TextUtils.isEmpty(artistName)) {
+            return 0;
+        }
+        for (int i = 0; i < mAdapter.getCount(); i++) {
+            if (mAdapter.getItem(i).mArtistId.equals(artistName)) {
+                return i;
+            }
+        }
+        return 0;
     }
 
     /**
-     * {@inheritDoc}
+     * Sets up various helpers for both the list and grid
+     * 
+     * @param list The list or grid
      */
-    @Override
-    public void onCreate(final Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        // Create the adpater
-        int layout = R.layout.grid_items_normal;
-        if (isSimpleLayout()) {
-            layout = R.layout.list_item_simple;
-        } else if (isDetailedLayout()) {
-            layout = R.layout.list_item_detailed;
-        } else {
-            layout = R.layout.grid_items_normal;
-        }
-        mAdapter = new ArtistAdapter(getSherlockActivity(), layout);
+    private void initAbsListView(final AbsListView list) {
+        // Release any references to the recycled Views
+        list.setRecyclerListener(new RecycleHolder());
+        // Listen for ContextMenus to be created
+        list.setOnCreateContextMenuListener(this);
+        // Show the albums and songs from the selected artist
+        list.setOnItemClickListener(this);
+        // To help make scrolling smooth
+        list.setOnScrollListener(this);
     }
 
     /**
-     * {@inheritDoc}
+     * Sets up the grid view
      */
-    @Override
-    public View onCreateView(final LayoutInflater inflater, final ViewGroup container,
-            final Bundle savedInstanceState) {
-        // The View for the fragment's UI
-        if (isSimpleLayout()) {
-            mRootView = (ViewGroup)inflater.inflate(R.layout.list_base, null);
-            initListView();
+    private void initGridView() {
+        // Initialize the grid
+        mGridView = (GridView) mRootView.findViewById(R.id.grid_base);
+        // Set the data behind the grid
+        mGridView.setAdapter(mAdapter);
+        // Set up the helpers
+        initAbsListView(mGridView);
+        if (ApolloUtils.isLandscape(getSupportActivity())) {
+            if (isDetailedLayout()) {
+                mAdapter.setLoadExtraData(true);
+                mGridView.setNumColumns(TWO);
+            } else {
+                mGridView.setNumColumns(FOUR);
+            }
         } else {
-            mRootView = (ViewGroup)inflater.inflate(R.layout.grid_base, null);
-            initGridView();
+            if (isDetailedLayout()) {
+                mAdapter.setLoadExtraData(true);
+                mGridView.setNumColumns(ONE);
+            } else {
+                mGridView.setNumColumns(TWO);
+            }
         }
-        return mRootView;
+    }
+
+    /**
+     * Sets up the list view
+     */
+    private void initListView() {
+        // Initialize the grid
+        mListView = (ListView) mRootView.findViewById(R.id.list_base);
+        // Set the data behind the list
+        mListView.setAdapter(mAdapter);
+        // Set up the helpers
+        initAbsListView(mListView);
+    }
+
+    private boolean isDetailedLayout() {
+        return PreferenceUtils.getInstace(getSupportActivity()).isDetailedLayout(ARTIST_LAYOUT,
+                getSupportActivity());
+    }
+
+    private boolean isSimpleLayout() {
+        return PreferenceUtils.getInstace(getSupportActivity()).isSimpleLayout(ARTIST_LAYOUT,
+                getSupportActivity());
     }
 
     /**
@@ -180,57 +218,25 @@ public class ArtistFragment extends SherlockFragment implements LoaderCallbacks<
      * {@inheritDoc}
      */
     @Override
-    public void onPause() {
-        super.onPause();
-        mAdapter.flush();
+    public void onAttach(final Activity activity) {
+        super.onAttach(activity);
+        // Register the music status listener
+        ((BaseActivity) activity).setMusicStateListenerListener(this);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void onCreateContextMenu(final ContextMenu menu, final View v,
-            final ContextMenuInfo menuInfo) {
-        super.onCreateContextMenu(menu, v, menuInfo);
-
-        // Get the position of the selected item
-        final AdapterContextMenuInfo info = (AdapterContextMenuInfo)menuInfo;
-        // Creat a new model
-        mArtist = mAdapter.getItem(info.position);
-        // Create a list of the artist's songs
-        mArtistList = MusicUtils.getSongListForArtist(getSherlockActivity(), mArtist.mArtistId);
-
-        // Play the artist
-        menu.add(GROUP_ID, FragmentMenuItems.PLAY_SELECTION, Menu.NONE,
-                getString(R.string.context_menu_play_selection));
-
-        // Add the artist to the queue
-        menu.add(GROUP_ID, FragmentMenuItems.ADD_TO_QUEUE, Menu.NONE,
-                getString(R.string.add_to_queue));
-
-        // Add the artist to a playlist
-        final SubMenu subMenu = menu.addSubMenu(GROUP_ID, FragmentMenuItems.ADD_TO_PLAYLIST,
-                Menu.NONE, R.string.add_to_playlist);
-        MusicUtils.makePlaylistMenu(getSherlockActivity(), GROUP_ID, subMenu, false);
-
-        // Delete the artist
-        menu.add(GROUP_ID, FragmentMenuItems.DELETE, Menu.NONE,
-                getString(R.string.context_menu_delete));
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean onContextItemSelected(final android.view.MenuItem item) {
+    public boolean onContextItemSelected(final MenuItem item) {
         // Avoid leaking context menu selections
         if (item.getGroupId() == GROUP_ID) {
             switch (item.getItemId()) {
                 case FragmentMenuItems.PLAY_SELECTION:
-                    MusicUtils.playAll(getSherlockActivity(), mArtistList, 0, true);
+                    MusicUtils.playAll(getSupportActivity(), mArtistList, 0, true);
                     return true;
                 case FragmentMenuItems.ADD_TO_QUEUE:
-                    MusicUtils.addToQueue(getSherlockActivity(), mArtistList);
+                    MusicUtils.addToQueue(getSupportActivity(), mArtistList);
                     return true;
                 case FragmentMenuItems.NEW_PLAYLIST:
                     CreateNewPlaylist.getInstance(mArtistList).show(getFragmentManager(),
@@ -238,7 +244,7 @@ public class ArtistFragment extends SherlockFragment implements LoaderCallbacks<
                     return true;
                 case FragmentMenuItems.PLAYLIST_SELECTED:
                     final long id = item.getIntent().getLongExtra("playlist", 0);
-                    MusicUtils.addToPlaylist(getSherlockActivity(), mArtistList, id);
+                    MusicUtils.addToPlaylist(getSupportActivity(), mArtistList, id);
                     return true;
                 case FragmentMenuItems.DELETE:
                     mShouldRefresh = true;
@@ -257,15 +263,76 @@ public class ArtistFragment extends SherlockFragment implements LoaderCallbacks<
      * {@inheritDoc}
      */
     @Override
-    public void onScrollStateChanged(final AbsListView view, final int scrollState) {
-        // Pause disk cache access to ensure smoother scrolling
-        if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_FLING
-                || scrollState == AbsListView.OnScrollListener.SCROLL_STATE_TOUCH_SCROLL) {
-            mAdapter.setPauseDiskCache(true);
+    public void onCreate(final Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        // Create the adpater
+        int layout = R.layout.grid_items_normal;
+        if (isSimpleLayout()) {
+            layout = R.layout.list_item_simple;
+        } else if (isDetailedLayout()) {
+            layout = R.layout.list_item_detailed;
         } else {
-            mAdapter.setPauseDiskCache(false);
-            mAdapter.notifyDataSetChanged();
+            layout = R.layout.grid_items_normal;
         }
+        mAdapter = new ArtistAdapter(getSupportActivity(), layout);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onCreateContextMenu(final ContextMenu menu, final View v,
+            final ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+
+        // Get the position of the selected item
+        final AdapterContextMenuInfo info = (AdapterContextMenuInfo) menuInfo;
+        // Creat a new model
+        mArtist = mAdapter.getItem(info.position);
+        // Create a list of the artist's songs
+        mArtistList = MusicUtils.getSongListForArtist(getSupportActivity(), mArtist.mArtistId);
+
+        // Play the artist
+        menu.add(GROUP_ID, FragmentMenuItems.PLAY_SELECTION, Menu.NONE,
+                getString(R.string.context_menu_play_selection));
+
+        // Add the artist to the queue
+        menu.add(GROUP_ID, FragmentMenuItems.ADD_TO_QUEUE, Menu.NONE,
+                getString(R.string.add_to_queue));
+
+        // Add the artist to a playlist
+        final SubMenu subMenu = menu.addSubMenu(GROUP_ID, FragmentMenuItems.ADD_TO_PLAYLIST,
+                Menu.NONE, R.string.add_to_playlist);
+        MusicUtils.makePlaylistMenu(getSupportActivity(), GROUP_ID, subMenu, false);
+
+        // Delete the artist
+        menu.add(GROUP_ID, FragmentMenuItems.DELETE, Menu.NONE,
+                getString(R.string.context_menu_delete));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Loader<List<Artist>> onCreateLoader(final int id, final Bundle args) {
+        return new ArtistLoader(getSupportActivity());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public View onCreateView(final LayoutInflater inflater, final ViewGroup container,
+            final Bundle savedInstanceState) {
+        // The View for the fragment's UI
+        if (isSimpleLayout()) {
+            mRootView = (ViewGroup) inflater.inflate(R.layout.list_base, null);
+            initListView();
+        } else {
+            mRootView = (ViewGroup) inflater.inflate(R.layout.grid_base, null);
+            initGridView();
+        }
+        return mRootView;
     }
 
     /**
@@ -275,15 +342,16 @@ public class ArtistFragment extends SherlockFragment implements LoaderCallbacks<
     public void onItemClick(final AdapterView<?> parent, final View view, final int position,
             final long id) {
         mArtist = mAdapter.getItem(position);
-        NavUtils.openArtistProfile(getSherlockActivity(), mArtist.mArtistName);
+        NavUtils.openArtistProfile(getSupportActivity(), mArtist.mArtistName);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public Loader<List<Artist>> onCreateLoader(final int id, final Bundle args) {
-        return new ArtistLoader(getSherlockActivity());
+    public void onLoaderReset(final Loader<List<Artist>> loader) {
+        // Clear the data in the adapter
+        mAdapter.unload();
     }
 
     /**
@@ -294,7 +362,7 @@ public class ArtistFragment extends SherlockFragment implements LoaderCallbacks<
         // Check for any errors
         if (data.isEmpty()) {
             // Set the empty text
-            final TextView empty = (TextView)mRootView.findViewById(R.id.empty);
+            final TextView empty = (TextView) mRootView.findViewById(R.id.empty);
             empty.setText(getString(R.string.empty_music));
             if (isSimpleLayout()) {
                 mListView.setEmptyView(empty);
@@ -318,9 +386,62 @@ public class ArtistFragment extends SherlockFragment implements LoaderCallbacks<
      * {@inheritDoc}
      */
     @Override
-    public void onLoaderReset(final Loader<List<Artist>> loader) {
-        // Clear the data in the adapter
-        mAdapter.unload();
+    public void onMetaChanged() {
+        // Nothing to do
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onPause() {
+        super.onPause();
+        mAdapter.flush();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onScroll(final AbsListView view, final int firstVisibleItem,
+            final int visibleItemCount, final int totalItemCount) {
+        // Nothing to do
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onScrollStateChanged(final AbsListView view, final int scrollState) {
+        // Pause disk cache access to ensure smoother scrolling
+        if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_FLING
+                || scrollState == AbsListView.OnScrollListener.SCROLL_STATE_TOUCH_SCROLL) {
+            mAdapter.setPauseDiskCache(true);
+        } else {
+            mAdapter.setPauseDiskCache(false);
+            mAdapter.notifyDataSetChanged();
+        }
+    }
+
+    /**
+     * Restarts the loader.
+     */
+    public void refresh() {
+        // Wait a moment for the preference to change.
+        SystemClock.sleep(10);
+        getLoaderManager().restartLoader(LOADER, null, this);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void restartLoader() {
+        // Update the list when the user deletes any items
+        if (mShouldRefresh) {
+            getLoaderManager().restartLoader(LOADER, null, this);
+        }
+        mShouldRefresh = false;
     }
 
     /**
@@ -337,125 +458,5 @@ public class ArtistFragment extends SherlockFragment implements LoaderCallbacks<
                 mGridView.setSelection(currentArtistPosition);
             }
         }
-    }
-
-    /**
-     * @return The position of an item in the list or grid based on the name of
-     *         the currently playing artist.
-     */
-    private int getItemPositionByArtist() {
-        final String artistName = String.valueOf(MusicUtils.getCurrentArtistId());
-        if (mAdapter == null || TextUtils.isEmpty(artistName)) {
-            return 0;
-        }
-        for (int i = 0; i < mAdapter.getCount(); i++) {
-            if (mAdapter.getItem(i).mArtistId.equals(artistName)) {
-                return i;
-            }
-        }
-        return 0;
-    }
-
-    /**
-     * Restarts the loader.
-     */
-    public void refresh() {
-        // Wait a moment for the preference to change.
-        SystemClock.sleep(10);
-        getLoaderManager().restartLoader(LOADER, null, this);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onScroll(final AbsListView view, final int firstVisibleItem,
-            final int visibleItemCount, final int totalItemCount) {
-        // Nothing to do
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void restartLoader() {
-        // Update the list when the user deletes any items
-        if (mShouldRefresh) {
-            getLoaderManager().restartLoader(LOADER, null, this);
-        }
-        mShouldRefresh = false;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onMetaChanged() {
-        // Nothing to do
-    }
-
-    /**
-     * Sets up various helpers for both the list and grid
-     * 
-     * @param list The list or grid
-     */
-    private void initAbsListView(final AbsListView list) {
-        // Release any references to the recycled Views
-        list.setRecyclerListener(new RecycleHolder());
-        // Listen for ContextMenus to be created
-        list.setOnCreateContextMenuListener(this);
-        // Show the albums and songs from the selected artist
-        list.setOnItemClickListener(this);
-        // To help make scrolling smooth
-        list.setOnScrollListener(this);
-    }
-
-    /**
-     * Sets up the list view
-     */
-    private void initListView() {
-        // Initialize the grid
-        mListView = (ListView)mRootView.findViewById(R.id.list_base);
-        // Set the data behind the list
-        mListView.setAdapter(mAdapter);
-        // Set up the helpers
-        initAbsListView(mListView);
-    }
-
-    /**
-     * Sets up the grid view
-     */
-    private void initGridView() {
-        // Initialize the grid
-        mGridView = (GridView)mRootView.findViewById(R.id.grid_base);
-        // Set the data behind the grid
-        mGridView.setAdapter(mAdapter);
-        // Set up the helpers
-        initAbsListView(mGridView);
-        if (ApolloUtils.isLandscape(getSherlockActivity())) {
-            if (isDetailedLayout()) {
-                mAdapter.setLoadExtraData(true);
-                mGridView.setNumColumns(TWO);
-            } else {
-                mGridView.setNumColumns(FOUR);
-            }
-        } else {
-            if (isDetailedLayout()) {
-                mAdapter.setLoadExtraData(true);
-                mGridView.setNumColumns(ONE);
-            } else {
-                mGridView.setNumColumns(TWO);
-            }
-        }
-    }
-
-    private boolean isSimpleLayout() {
-        return PreferenceUtils.getInstace(getSherlockActivity()).isSimpleLayout(ARTIST_LAYOUT,
-                getSherlockActivity());
-    }
-
-    private boolean isDetailedLayout() {
-        return PreferenceUtils.getInstace(getSherlockActivity()).isDetailedLayout(ARTIST_LAYOUT,
-                getSherlockActivity());
     }
 }

@@ -11,6 +11,9 @@
 
 package com.andrew.apollo.loaders;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import android.content.Context;
 import android.database.Cursor;
 
@@ -18,9 +21,6 @@ import com.andrew.apollo.model.Song;
 import com.andrew.apollo.provider.FavoritesStore;
 import com.andrew.apollo.provider.FavoritesStore.FavoriteColumns;
 import com.andrew.apollo.utils.Lists;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Used to query the {@link FavoritesStore} for the tracks marked as favorites.
@@ -30,14 +30,30 @@ import java.util.List;
 public class FavoritesLoader extends WrappedAsyncTaskLoader<List<Song>> {
 
     /**
-     * The result
+     * @param context The {@link Context} to use.
+     * @return The {@link Cursor} used to run the favorites query.
      */
-    private final ArrayList<Song> mSongList = Lists.newArrayList();
+    public static final Cursor makeFavoritesCursor(final Context context) {
+        return FavoritesStore
+                .getInstance(context)
+                .getReadableDatabase()
+                .query(FavoriteColumns.NAME,
+                        new String[] {
+                                FavoriteColumns.ID + " as _id", FavoriteColumns.ID,
+                                FavoriteColumns.SONGNAME, FavoriteColumns.ALBUMNAME,
+                                FavoriteColumns.ARTISTNAME, FavoriteColumns.PLAYCOUNT
+                        }, null, null, null, null, FavoriteColumns.PLAYCOUNT + " DESC");
+    }
 
     /**
      * The {@link Cursor} used to run the query.
      */
     private Cursor mCursor;
+
+    /**
+     * The result
+     */
+    private final ArrayList<Song> mSongList = Lists.newArrayList();
 
     /**
      * Constructor of <code>FavoritesHandler</code>
@@ -88,21 +104,5 @@ public class FavoritesLoader extends WrappedAsyncTaskLoader<List<Song>> {
             mCursor = null;
         }
         return mSongList;
-    }
-
-    /**
-     * @param context The {@link Context} to use.
-     * @return The {@link Cursor} used to run the favorites query.
-     */
-    public static final Cursor makeFavoritesCursor(final Context context) {
-        return FavoritesStore
-                .getInstance(context)
-                .getReadableDatabase()
-                .query(FavoriteColumns.NAME,
-                        new String[] {
-                                FavoriteColumns.ID + " as _id", FavoriteColumns.ID,
-                                FavoriteColumns.SONGNAME, FavoriteColumns.ALBUMNAME,
-                                FavoriteColumns.ARTISTNAME, FavoriteColumns.PLAYCOUNT
-                        }, null, null, null, null, FavoriteColumns.PLAYCOUNT + " DESC");
     }
 }

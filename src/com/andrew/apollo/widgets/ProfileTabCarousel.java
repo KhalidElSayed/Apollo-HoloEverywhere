@@ -11,6 +11,8 @@
 
 package com.andrew.apollo.widgets;
 
+import org.holoeverywhere.app.Activity;
+
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.Resources;
@@ -23,7 +25,6 @@ import android.view.animation.AnimationUtils;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 
-import com.actionbarsherlock.app.SherlockFragmentActivity;
 import com.andrew.apollo.R;
 import com.andrew.apollo.ui.activities.ProfileActivity;
 import com.andrew.apollo.utils.ApolloUtils;
@@ -40,9 +41,48 @@ import com.nineoldandroids.animation.ObjectAnimator;
 public class ProfileTabCarousel extends HorizontalScrollView implements OnTouchListener {
 
     /**
+     * Interface for callbacks invoked when the user interacts with the
+     * carousel.
+     */
+    public interface Listener {
+        public void onScrollChanged(int l, int t, int oldl, int oldt);
+
+        public void onTabSelected(int position);
+
+        public void onTouchDown();
+
+        public void onTouchUp();
+    }
+
+    /** When clicked, selects the corresponding tab. */
+    private final class TabClickListener implements OnClickListener {
+        private final int mTab;
+
+        public TabClickListener(final int tab) {
+            super();
+            mTab = tab;
+        }
+
+        @Override
+        public void onClick(final View v) {
+            mListener.onTabSelected(mTab);
+        }
+    }
+
+    /**
+     * Alpha layer to be set on the lable view
+     */
+    private static final float MAX_ALPHA = 0.6f;
+
+    /**
      * Number of tabs
      */
     private static final int TAB_COUNT = 2;
+
+    /**
+     * Y coordinate of the tab at the given index was selected
+     */
+    private static final float[] mYCoordinateArray = new float[TAB_COUNT];
 
     /**
      * First tab index
@@ -53,53 +93,6 @@ public class ProfileTabCarousel extends HorizontalScrollView implements OnTouchL
      * Second tab index
      */
     private static final int TAB_INDEX_SECOND = 1;
-
-    /**
-     * Alpha layer to be set on the lable view
-     */
-    private static final float MAX_ALPHA = 0.6f;
-
-    /**
-     * Y coordinate of the tab at the given index was selected
-     */
-    private static final float[] mYCoordinateArray = new float[TAB_COUNT];
-
-    /**
-     * Tab width as defined as a fraction of the screen width
-     */
-    private final float tabWidthScreenWidthFraction;
-
-    /**
-     * Tab height as defined as a fraction of the screen width
-     */
-    private final float tabHeightScreenWidthFraction;
-
-    /**
-     * Height of the tab label
-     */
-    private final int mTabDisplayLabelHeight;
-
-    /**
-     * Height in pixels of the shadow under the tab carousel
-     */
-    private final int mTabShadowHeight;
-
-    /**
-     * First tab click listener
-     */
-    private final TabClickListener mTabOneTouchInterceptListener = new TabClickListener(
-            TAB_INDEX_FIRST);
-
-    /**
-     * Second tab click listener
-     */
-    private final TabClickListener mTabTwoTouchInterceptListener = new TabClickListener(
-            TAB_INDEX_SECOND);
-
-    /**
-     * The last scrolled position
-     */
-    private int mLastScrollPosition = Integer.MIN_VALUE;
 
     /**
      * Allowed horizontal scroll length
@@ -116,6 +109,17 @@ public class ProfileTabCarousel extends HorizontalScrollView implements OnTouchL
      */
     private int mCurrentTab = TAB_INDEX_FIRST;
 
+    private boolean mEnableSwipe;
+
+    private CarouselTab mFirstTab;
+
+    /**
+     * The last scrolled position
+     */
+    private int mLastScrollPosition = Integer.MIN_VALUE;
+
+    private Listener mListener;
+
     /**
      * Factor to scale scroll-amount sent to listeners
      */
@@ -123,15 +127,69 @@ public class ProfileTabCarousel extends HorizontalScrollView implements OnTouchL
 
     private boolean mScrollToCurrentTab = false;
 
-    private boolean mTabCarouselIsAnimating;
-
-    private boolean mEnableSwipe;
-
-    private CarouselTab mFirstTab;
-
     private CarouselTab mSecondTab;
 
-    private Listener mListener;
+    /**
+     * This listener keeps track of whether the tab carousel animation is
+     * currently going on or not, in order to prevent other simultaneous changes
+     * to the Y position of the tab carousel which can cause flicker.
+     */
+    private final AnimatorListener mTabCarouselAnimatorListener = new AnimatorListener() {
+
+        @Override
+        public void onAnimationCancel(final Animator animation) {
+            mTabCarouselIsAnimating = false;
+        }
+
+        @Override
+        public void onAnimationEnd(final Animator animation) {
+            mTabCarouselIsAnimating = false;
+        }
+
+        @Override
+        public void onAnimationRepeat(final Animator animation) {
+            mTabCarouselIsAnimating = true;
+        }
+
+        @Override
+        public void onAnimationStart(final Animator animation) {
+            mTabCarouselIsAnimating = true;
+        }
+    };
+
+    private boolean mTabCarouselIsAnimating;
+
+    /**
+     * Height of the tab label
+     */
+    private final int mTabDisplayLabelHeight;
+
+    /**
+     * First tab click listener
+     */
+    private final TabClickListener mTabOneTouchInterceptListener = new TabClickListener(
+            TAB_INDEX_FIRST);
+
+    /**
+     * Height in pixels of the shadow under the tab carousel
+     */
+    private final int mTabShadowHeight;
+
+    /**
+     * Second tab click listener
+     */
+    private final TabClickListener mTabTwoTouchInterceptListener = new TabClickListener(
+            TAB_INDEX_SECOND);
+
+    /**
+     * Tab height as defined as a fraction of the screen width
+     */
+    private final float tabHeightScreenWidthFraction;
+
+    /**
+     * Tab width as defined as a fraction of the screen width
+     */
+    private final float tabWidthScreenWidthFraction;
 
     /**
      * @param context The {@link Context} to use
@@ -151,14 +209,84 @@ public class ProfileTabCarousel extends HorizontalScrollView implements OnTouchL
     }
 
     /**
+     * Used to fetch for the album art via Last.fm.
+     * 
+     * @param context The {@link Context} to use.
+     * @param album The name of the album in the profile the user is viewing.
+     */
+    public void fetchAlbumPhoto(final Activity context, final String albumName) {
+        mFirstTab.fetchAlbumPhoto(context, albumName);
+    }
+
+    /**
+     * @return The {@link ImageView} used to set the album art.
+     */
+    public ImageView getAlbumArt() {
+        return mFirstTab.getAlbumArt();
+    }
+
+    /**
+     * Returns the number of pixels that this view can be scrolled horizontally.
+     */
+    public int getAllowedHorizontalScrollLength() {
+        return mAllowedHorizontalScrollLength;
+    }
+
+    /**
+     * Returns the number of pixels that this view can be scrolled vertically
+     * while still allowing the tab labels to still show.
+     */
+    public int getAllowedVerticalScrollLength() {
+        return mAllowedVerticalScrollLength;
+    }
+
+    /**
+     * @return The main {@link ImageView} for the first tab
+     */
+    public ImageView getHeaderPhoto() {
+        return mFirstTab.getPhoto();
+    }
+
+    /**
+     * @return The {@link ImageView} in the first index.
+     */
+    public ImageView getPhoto() {
+        return mFirstTab.getPhoto();
+    }
+
+    /**
+     * Returns the stored Y coordinate of this view the last time the user was
+     * on the selected tab given by tabIndex.
+     */
+    public float getStoredYCoordinateForTab(final int tabIndex) {
+        return mYCoordinateArray[tabIndex];
+    }
+
+    /**
+     * @return True if the carousel is currently animating, false otherwise
+     */
+    public boolean isTabCarouselIsAnimating() {
+        return mTabCarouselIsAnimating;
+    }
+
+    /**
+     * Request that the view move to the given Y coordinate. Also store the Y
+     * coordinate as the last requested Y coordinate for the given tabIndex.
+     */
+    public void moveToYCoordinate(final int tabIndex, final float y) {
+        storeYCoordinate(tabIndex, y);
+        restoreYCoordinate(0, tabIndex);
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
     protected void onFinishInflate() {
         super.onFinishInflate();
-        mFirstTab = (CarouselTab)findViewById(R.id.profile_tab_carousel_tab_one);
+        mFirstTab = (CarouselTab) findViewById(R.id.profile_tab_carousel_tab_one);
         mFirstTab.setOverlayOnClickListener(mTabOneTouchInterceptListener);
-        mSecondTab = (CarouselTab)findViewById(R.id.profile_tab_carousel_tab_two);
+        mSecondTab = (CarouselTab) findViewById(R.id.profile_tab_carousel_tab_two);
         mSecondTab.setOverlayOnClickListener(mTabTwoTouchInterceptListener);
     }
 
@@ -166,39 +294,12 @@ public class ProfileTabCarousel extends HorizontalScrollView implements OnTouchL
      * {@inheritDoc}
      */
     @Override
-    protected void onMeasure(final int widthMeasureSpec, final int heightMeasureSpec) {
-        final int screenWidth = MeasureSpec.getSize(widthMeasureSpec);
-        final int tabWidth = Math.round(tabWidthScreenWidthFraction * screenWidth);
-
-        mAllowedHorizontalScrollLength = tabWidth * TAB_COUNT - screenWidth;
-        if (mAllowedHorizontalScrollLength == 0) {
-            mScrollScaleFactor = 1.0f;
-        } else {
-            mScrollScaleFactor = screenWidth / mAllowedHorizontalScrollLength;
+    public boolean onInterceptTouchEvent(final MotionEvent ev) {
+        final boolean mInterceptTouch = super.onInterceptTouchEvent(ev);
+        if (mInterceptTouch) {
+            mListener.onTouchDown();
         }
-
-        final int tabHeight = Math.round(screenWidth * tabHeightScreenWidthFraction)
-                + mTabShadowHeight;
-        if (getChildCount() > 0) {
-            final View child = getChildAt(0);
-
-            // Add 1 dip of separation between the tabs
-            final int seperatorPixels = (int)(TypedValue.applyDimension(
-                    TypedValue.COMPLEX_UNIT_DIP, 1, getResources().getDisplayMetrics()) + 0.5f);
-
-            if (mEnableSwipe) {
-                child.measure(
-                        MeasureSpec.makeMeasureSpec(TAB_COUNT * tabWidth + (TAB_COUNT - 1)
-                                * seperatorPixels, MeasureSpec.EXACTLY),
-                        MeasureSpec.makeMeasureSpec(tabHeight, MeasureSpec.EXACTLY));
-            } else {
-                child.measure(MeasureSpec.makeMeasureSpec(screenWidth, MeasureSpec.EXACTLY),
-                        MeasureSpec.makeMeasureSpec(tabHeight, MeasureSpec.EXACTLY));
-            }
-        }
-        mAllowedVerticalScrollLength = tabHeight - mTabDisplayLabelHeight - mTabShadowHeight;
-        setMeasuredDimension(resolveSize(screenWidth, widthMeasureSpec),
-                resolveSize(tabHeight, heightMeasureSpec));
+        return mInterceptTouch;
     }
 
     /**
@@ -226,13 +327,52 @@ public class ProfileTabCarousel extends HorizontalScrollView implements OnTouchL
      * {@inheritDoc}
      */
     @Override
+    protected void onMeasure(final int widthMeasureSpec, final int heightMeasureSpec) {
+        final int screenWidth = MeasureSpec.getSize(widthMeasureSpec);
+        final int tabWidth = Math.round(tabWidthScreenWidthFraction * screenWidth);
+
+        mAllowedHorizontalScrollLength = tabWidth * TAB_COUNT - screenWidth;
+        if (mAllowedHorizontalScrollLength == 0) {
+            mScrollScaleFactor = 1.0f;
+        } else {
+            mScrollScaleFactor = screenWidth / mAllowedHorizontalScrollLength;
+        }
+
+        final int tabHeight = Math.round(screenWidth * tabHeightScreenWidthFraction)
+                + mTabShadowHeight;
+        if (getChildCount() > 0) {
+            final View child = getChildAt(0);
+
+            // Add 1 dip of separation between the tabs
+            final int seperatorPixels = (int) (TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP, 1, getResources().getDisplayMetrics()) + 0.5f);
+
+            if (mEnableSwipe) {
+                child.measure(
+                        MeasureSpec.makeMeasureSpec(TAB_COUNT * tabWidth + (TAB_COUNT - 1)
+                                * seperatorPixels, MeasureSpec.EXACTLY),
+                        MeasureSpec.makeMeasureSpec(tabHeight, MeasureSpec.EXACTLY));
+            } else {
+                child.measure(MeasureSpec.makeMeasureSpec(screenWidth, MeasureSpec.EXACTLY),
+                        MeasureSpec.makeMeasureSpec(tabHeight, MeasureSpec.EXACTLY));
+            }
+        }
+        mAllowedVerticalScrollLength = tabHeight - mTabDisplayLabelHeight - mTabShadowHeight;
+        setMeasuredDimension(resolveSize(screenWidth, widthMeasureSpec),
+                resolveSize(tabHeight, heightMeasureSpec));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     protected void onScrollChanged(final int x, final int y, final int oldX, final int oldY) {
         super.onScrollChanged(x, y, oldX, oldY);
         if (mLastScrollPosition == x) {
             return;
         }
-        final int scaledL = (int)(x * mScrollScaleFactor);
-        final int oldScaledL = (int)(oldX * mScrollScaleFactor);
+        final int scaledL = (int) (x * mScrollScaleFactor);
+        final int oldScaledL = (int) (oldX * mScrollScaleFactor);
         mListener.onScrollChanged(scaledL, y, oldScaledL, oldY);
         mLastScrollPosition = x;
         updateAlphaLayers();
@@ -252,18 +392,6 @@ public class ProfileTabCarousel extends HorizontalScrollView implements OnTouchL
                 return true;
         }
         return super.onTouchEvent(event);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean onInterceptTouchEvent(final MotionEvent ev) {
-        final boolean mInterceptTouch = super.onInterceptTouchEvent(ev);
-        if (mInterceptTouch) {
-            mListener.onTouchDown();
-        }
-        return mInterceptTouch;
     }
 
     /**
@@ -304,102 +432,35 @@ public class ProfileTabCarousel extends HorizontalScrollView implements OnTouchL
     }
 
     /**
-     * Request that the view move to the given Y coordinate. Also store the Y
-     * coordinate as the last requested Y coordinate for the given tabIndex.
+     * Sets the album image header
+     * 
+     * @param context The {@link Activity} to use
+     * @param albumName The key used to find the cached album art
+     * @param artistName The artist name used to find the cached artist image
      */
-    public void moveToYCoordinate(final int tabIndex, final float y) {
-        storeYCoordinate(tabIndex, y);
-        restoreYCoordinate(0, tabIndex);
+    public void setAlbumProfileHeader(final Activity context,
+            final String albumName, final String artistName) {
+        mFirstTab.setLabel(getResources().getString(R.string.page_songs));
+        mFirstTab.setAlbumPhoto(context, albumName);
+        mFirstTab.blurPhoto(context, artistName, albumName);
+        mSecondTab.setVisibility(View.GONE);
+        mEnableSwipe = false;
     }
 
     /**
-     * Store this information as the last requested Y coordinate for the given
-     * tabIndex.
+     * Sets the artist image header
+     * 
+     * @param context The {@link Activity} to use
+     * @param artistName The artist name used to find the cached artist image
+     *            and used to find the last album played by the artist
      */
-    public void storeYCoordinate(final int tabIndex, final float y) {
-        mYCoordinateArray[tabIndex] = y;
-    }
-
-    /**
-     * Returns the stored Y coordinate of this view the last time the user was
-     * on the selected tab given by tabIndex.
-     */
-    public float getStoredYCoordinateForTab(final int tabIndex) {
-        return mYCoordinateArray[tabIndex];
-    }
-
-    /**
-     * Returns the number of pixels that this view can be scrolled horizontally.
-     */
-    public int getAllowedHorizontalScrollLength() {
-        return mAllowedHorizontalScrollLength;
-    }
-
-    /**
-     * Returns the number of pixels that this view can be scrolled vertically
-     * while still allowing the tab labels to still show.
-     */
-    public int getAllowedVerticalScrollLength() {
-        return mAllowedVerticalScrollLength;
-    }
-
-    /**
-     * Sets the correct alpha layers over the tabs.
-     */
-    private void updateAlphaLayers() {
-        float alpha = mLastScrollPosition * MAX_ALPHA / mAllowedHorizontalScrollLength;
-        alpha = AlphaTouchInterceptorOverlay.clamp(alpha, 0.0f, 1.0f);
-        mFirstTab.setAlphaLayerValue(alpha);
-        mSecondTab.setAlphaLayerValue(MAX_ALPHA - alpha);
-    }
-
-    /**
-     * @return The {@link ImageView} in the first index.
-     */
-    public ImageView getPhoto() {
-        return mFirstTab.getPhoto();
-    }
-
-    /**
-     * @return The {@link ImageView} used to set the album art.
-     */
-    public ImageView getAlbumArt() {
-        return mFirstTab.getAlbumArt();
-    }
-
-    /**
-     * This listener keeps track of whether the tab carousel animation is
-     * currently going on or not, in order to prevent other simultaneous changes
-     * to the Y position of the tab carousel which can cause flicker.
-     */
-    private final AnimatorListener mTabCarouselAnimatorListener = new AnimatorListener() {
-
-        @Override
-        public void onAnimationCancel(final Animator animation) {
-            mTabCarouselIsAnimating = false;
-        }
-
-        @Override
-        public void onAnimationEnd(final Animator animation) {
-            mTabCarouselIsAnimating = false;
-        }
-
-        @Override
-        public void onAnimationRepeat(final Animator animation) {
-            mTabCarouselIsAnimating = true;
-        }
-
-        @Override
-        public void onAnimationStart(final Animator animation) {
-            mTabCarouselIsAnimating = true;
-        }
-    };
-
-    /**
-     * @return True if the carousel is currently animating, false otherwise
-     */
-    public boolean isTabCarouselIsAnimating() {
-        return mTabCarouselIsAnimating;
+    public void setArtistProfileHeader(final Activity context,
+            final String artistName) {
+        mFirstTab.setLabel(getResources().getString(R.string.page_songs));
+        mSecondTab.setLabel(getResources().getString(R.string.page_albums));
+        mFirstTab.setArtistPhoto(context, artistName);
+        mSecondTab.setArtistAlbumPhoto(context, artistName);
+        mEnableSwipe = true;
     }
 
     /**
@@ -437,45 +498,13 @@ public class ProfileTabCarousel extends HorizontalScrollView implements OnTouchL
     }
 
     /**
-     * Sets the artist image header
-     * 
-     * @param context The {@link SherlockFragmentActivity} to use
-     * @param artistName The artist name used to find the cached artist image
-     *            and used to find the last album played by the artist
-     */
-    public void setArtistProfileHeader(final SherlockFragmentActivity context,
-            final String artistName) {
-        mFirstTab.setLabel(getResources().getString(R.string.page_songs));
-        mSecondTab.setLabel(getResources().getString(R.string.page_albums));
-        mFirstTab.setArtistPhoto(context, artistName);
-        mSecondTab.setArtistAlbumPhoto(context, artistName);
-        mEnableSwipe = true;
-    }
-
-    /**
-     * Sets the album image header
-     * 
-     * @param context The {@link SherlockFragmentActivity} to use
-     * @param albumName The key used to find the cached album art
-     * @param artistName The artist name used to find the cached artist image
-     */
-    public void setAlbumProfileHeader(final SherlockFragmentActivity context,
-            final String albumName, final String artistName) {
-        mFirstTab.setLabel(getResources().getString(R.string.page_songs));
-        mFirstTab.setAlbumPhoto(context, albumName);
-        mFirstTab.blurPhoto(context, artistName, albumName);
-        mSecondTab.setVisibility(View.GONE);
-        mEnableSwipe = false;
-    }
-
-    /**
      * Sets the playlist or genre image header
      * 
-     * @param context The {@link SherlockFragmentActivity} to use
+     * @param context The {@link Activity} to use
      * @param profileName The key used to find the cached image for a playlist
      *            or genre
      */
-    public void setPlaylistOrGenreProfileHeader(final SherlockFragmentActivity context,
+    public void setPlaylistOrGenreProfileHeader(final Activity context,
             final String profileName) {
         mFirstTab.setDefault(context);
         mFirstTab.setLabel(getResources().getString(R.string.page_songs));
@@ -485,49 +514,21 @@ public class ProfileTabCarousel extends HorizontalScrollView implements OnTouchL
     }
 
     /**
-     * Used to fetch for the album art via Last.fm.
-     * 
-     * @param context The {@link Context} to use.
-     * @param album The name of the album in the profile the user is viewing.
+     * Store this information as the last requested Y coordinate for the given
+     * tabIndex.
      */
-    public void fetchAlbumPhoto(final SherlockFragmentActivity context, final String albumName) {
-        mFirstTab.fetchAlbumPhoto(context, albumName);
+    public void storeYCoordinate(final int tabIndex, final float y) {
+        mYCoordinateArray[tabIndex] = y;
     }
 
     /**
-     * @return The main {@link ImageView} for the first tab
+     * Sets the correct alpha layers over the tabs.
      */
-    public ImageView getHeaderPhoto() {
-        return mFirstTab.getPhoto();
-    }
-
-    /** When clicked, selects the corresponding tab. */
-    private final class TabClickListener implements OnClickListener {
-        private final int mTab;
-
-        public TabClickListener(final int tab) {
-            super();
-            mTab = tab;
-        }
-
-        @Override
-        public void onClick(final View v) {
-            mListener.onTabSelected(mTab);
-        }
-    }
-
-    /**
-     * Interface for callbacks invoked when the user interacts with the
-     * carousel.
-     */
-    public interface Listener {
-        public void onTouchDown();
-
-        public void onTouchUp();
-
-        public void onScrollChanged(int l, int t, int oldl, int oldt);
-
-        public void onTabSelected(int position);
+    private void updateAlphaLayers() {
+        float alpha = mLastScrollPosition * MAX_ALPHA / mAllowedHorizontalScrollLength;
+        alpha = AlphaTouchInterceptorOverlay.clamp(alpha, 0.0f, 1.0f);
+        mFirstTab.setAlphaLayerValue(alpha);
+        mSecondTab.setAlphaLayerValue(MAX_ALPHA - alpha);
     }
 
 }

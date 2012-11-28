@@ -47,20 +47,6 @@ public class AppWidgetLarge extends AppWidgetProvider {
     }
 
     /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onUpdate(final Context context, final AppWidgetManager appWidgetManager,
-            final int[] appWidgetIds) {
-        defaultAppWidget(context, appWidgetIds);
-        final Intent updateIntent = new Intent(MusicPlaybackService.SERVICECMD);
-        updateIntent.putExtra(MusicPlaybackService.CMDNAME, AppWidgetLarge.CMDAPPWIDGETUPDATE);
-        updateIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds);
-        updateIntent.setFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
-        context.sendBroadcast(updateIntent);
-    }
-
-    /**
      * Initialize given widgets to default state, where we launch Music on
      * default click and hide actions if service not running.
      */
@@ -69,15 +55,6 @@ public class AppWidgetLarge extends AppWidgetProvider {
                 R.layout.app_widget_large);
         linkButtons(context, appWidgetViews, false);
         pushUpdate(context, appWidgetIds, appWidgetViews);
-    }
-
-    private void pushUpdate(final Context context, final int[] appWidgetIds, final RemoteViews views) {
-        final AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-        if (appWidgetIds != null) {
-            appWidgetManager.updateAppWidget(appWidgetIds, views);
-        } else {
-            appWidgetManager.updateAppWidget(new ComponentName(context, getClass()), views);
-        }
     }
 
     /**
@@ -92,6 +69,53 @@ public class AppWidgetLarge extends AppWidgetProvider {
     }
 
     /**
+     * Link up various button actions using {@link PendingIntents}.
+     * 
+     * @param playerActive True if player is active in background, which means
+     *            widget click will launch {@link AudioPlayerActivity},
+     *            otherwise we launch {@link MusicBrowserActivity}.
+     */
+    private void linkButtons(final Context context, final RemoteViews views,
+            final boolean playerActive) {
+        Intent action;
+        PendingIntent pendingIntent;
+
+        final ComponentName serviceName = new ComponentName(context, MusicPlaybackService.class);
+
+        // Now playing
+        if (playerActive) {
+            action = new Intent(context, AudioPlayerActivity.class);
+            pendingIntent = PendingIntent.getActivity(context, 0, action, 0);
+            views.setOnClickPendingIntent(R.id.app_widget_large_info_container, pendingIntent);
+            views.setOnClickPendingIntent(R.id.app_widget_large_image, pendingIntent);
+        } else {
+            // Home
+            action = new Intent(context, HomeActivity.class);
+            pendingIntent = PendingIntent.getActivity(context, 0, action, 0);
+            views.setOnClickPendingIntent(R.id.app_widget_large_info_container, pendingIntent);
+            views.setOnClickPendingIntent(R.id.app_widget_large_image, pendingIntent);
+        }
+
+        // Previous track
+        action = new Intent(MusicPlaybackService.PREVIOUS_ACTION);
+        action.setComponent(serviceName);
+        pendingIntent = PendingIntent.getService(context, 0, action, 0);
+        views.setOnClickPendingIntent(R.id.app_widget_large_previous, pendingIntent);
+
+        // Play and pause
+        action = new Intent(MusicPlaybackService.TOGGLEPAUSE_ACTION);
+        action.setComponent(serviceName);
+        pendingIntent = PendingIntent.getService(context, 0, action, 0);
+        views.setOnClickPendingIntent(R.id.app_widget_large_play, pendingIntent);
+
+        // Next track
+        action = new Intent(MusicPlaybackService.NEXT_ACTION);
+        action.setComponent(serviceName);
+        pendingIntent = PendingIntent.getService(context, 0, action, 0);
+        views.setOnClickPendingIntent(R.id.app_widget_large_next, pendingIntent);
+    }
+
+    /**
      * Handle a change notification coming over from
      * {@link MusicPlaybackService}
      */
@@ -102,6 +126,20 @@ public class AppWidgetLarge extends AppWidgetProvider {
                 performUpdate(service, null);
             }
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onUpdate(final Context context, final AppWidgetManager appWidgetManager,
+            final int[] appWidgetIds) {
+        defaultAppWidget(context, appWidgetIds);
+        final Intent updateIntent = new Intent(MusicPlaybackService.SERVICECMD);
+        updateIntent.putExtra(MusicPlaybackService.CMDNAME, AppWidgetLarge.CMDAPPWIDGETUPDATE);
+        updateIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, appWidgetIds);
+        updateIntent.setFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
+        context.sendBroadcast(updateIntent);
     }
 
     /**
@@ -152,51 +190,13 @@ public class AppWidgetLarge extends AppWidgetProvider {
         }
     }
 
-    /**
-     * Link up various button actions using {@link PendingIntents}.
-     * 
-     * @param playerActive True if player is active in background, which means
-     *            widget click will launch {@link AudioPlayerActivity},
-     *            otherwise we launch {@link MusicBrowserActivity}.
-     */
-    private void linkButtons(final Context context, final RemoteViews views,
-            final boolean playerActive) {
-        Intent action;
-        PendingIntent pendingIntent;
-
-        final ComponentName serviceName = new ComponentName(context, MusicPlaybackService.class);
-
-        // Now playing
-        if (playerActive) {
-            action = new Intent(context, AudioPlayerActivity.class);
-            pendingIntent = PendingIntent.getActivity(context, 0, action, 0);
-            views.setOnClickPendingIntent(R.id.app_widget_large_info_container, pendingIntent);
-            views.setOnClickPendingIntent(R.id.app_widget_large_image, pendingIntent);
+    private void pushUpdate(final Context context, final int[] appWidgetIds, final RemoteViews views) {
+        final AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+        if (appWidgetIds != null) {
+            appWidgetManager.updateAppWidget(appWidgetIds, views);
         } else {
-            // Home
-            action = new Intent(context, HomeActivity.class);
-            pendingIntent = PendingIntent.getActivity(context, 0, action, 0);
-            views.setOnClickPendingIntent(R.id.app_widget_large_info_container, pendingIntent);
-            views.setOnClickPendingIntent(R.id.app_widget_large_image, pendingIntent);
+            appWidgetManager.updateAppWidget(new ComponentName(context, getClass()), views);
         }
-
-        // Previous track
-        action = new Intent(MusicPlaybackService.PREVIOUS_ACTION);
-        action.setComponent(serviceName);
-        pendingIntent = PendingIntent.getService(context, 0, action, 0);
-        views.setOnClickPendingIntent(R.id.app_widget_large_previous, pendingIntent);
-
-        // Play and pause
-        action = new Intent(MusicPlaybackService.TOGGLEPAUSE_ACTION);
-        action.setComponent(serviceName);
-        pendingIntent = PendingIntent.getService(context, 0, action, 0);
-        views.setOnClickPendingIntent(R.id.app_widget_large_play, pendingIntent);
-
-        // Next track
-        action = new Intent(MusicPlaybackService.NEXT_ACTION);
-        action.setComponent(serviceName);
-        pendingIntent = PendingIntent.getService(context, 0, action, 0);
-        views.setOnClickPendingIntent(R.id.app_widget_large_next, pendingIntent);
     }
 
 }

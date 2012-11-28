@@ -32,6 +32,11 @@ public class ThemeableTitlePageIndicator extends TitlePageIndicator {
     private static final String BACKGROUND = "tpi_background";
 
     /**
+     * Resource name used to theme the footer color
+     */
+    private static final String FOOTER = "tpi_footer_color";
+
+    /**
      * Resource name used to theme the selected text color
      */
     private static final String SELECTED_TEXT = "tpi_selected_text_color";
@@ -40,11 +45,6 @@ public class ThemeableTitlePageIndicator extends TitlePageIndicator {
      * Resource name used to theme the unselected text color
      */
     private static final String TEXT = "tpi_unselected_text_color";
-
-    /**
-     * Resource name used to theme the footer color
-     */
-    private static final String FOOTER = "tpi_footer_color";
 
     /**
      * @param context The {@link Context} to use

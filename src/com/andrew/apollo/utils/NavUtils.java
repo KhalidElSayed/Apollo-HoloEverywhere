@@ -11,14 +11,14 @@
 
 package com.andrew.apollo.utils;
 
-import android.app.Activity;
+import org.holoeverywhere.app.Activity;
+
 import android.app.SearchManager;
 import android.content.Intent;
 import android.media.audiofx.AudioEffect;
 import android.os.Bundle;
 import android.provider.MediaStore;
 
-import com.actionbarsherlock.app.SherlockFragmentActivity;
 import com.andrew.apollo.Config;
 import com.andrew.apollo.R;
 import com.andrew.apollo.ui.activities.AudioPlayerActivity;
@@ -26,7 +26,9 @@ import com.andrew.apollo.ui.activities.HomeActivity;
 import com.andrew.apollo.ui.activities.ProfileActivity;
 import com.andrew.apollo.ui.activities.SearchActivity;
 import com.andrew.apollo.ui.activities.SettingsActivity;
-import com.devspark.appmsg.Crouton;
+
+import de.neofonie.mobile.app.android.widget.crouton.Crouton;
+import de.neofonie.mobile.app.android.widget.crouton.Style;
 
 /**
  * Various navigation helpers.
@@ -36,34 +38,27 @@ import com.devspark.appmsg.Crouton;
 public final class NavUtils {
 
     /**
-     * Opens the profile of an artist.
+     * Opens to {@link HomeActivity}.
      * 
-     * @param context The {@link SherlockFragmentActivity} to use.
-     * @param artistName The name of the artist
+     * @param activity The {@link Activity} to use.
      */
-    public static void openArtistProfile(final SherlockFragmentActivity context,
-            final String artistName) {
-
-        // Create a new bundle to transfer the artist info
-        final Bundle bundle = new Bundle();
-        bundle.putLong(Config.ID, MusicUtils.getIdForArtist(context, artistName));
-        bundle.putString(Config.MIME_TYPE, MediaStore.Audio.Artists.CONTENT_TYPE);
-        bundle.putString(Config.ARTIST_NAME, artistName);
-
-        // Create the intent to launch the profile activity
-        final Intent intent = new Intent(context, ProfileActivity.class);
-        intent.putExtras(bundle);
-        context.startActivity(intent);
+    public static void goHome(final Activity activity) {
+        final Intent intent = new Intent(activity, HomeActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        activity.startActivity(intent);
+        activity.finish();
     }
 
     /**
      * Opens the profile of an album.
      * 
-     * @param context The {@link SherlockFragmentActivity} to use.
+     * @param context The {@link Activity} to use.
      * @param albumName The name of the album
      * @param artistName The name of the album artist
      */
-    public static void openAlbumProfile(final SherlockFragmentActivity context,
+    public static void openAlbumProfile(final Activity context,
             final String albumName, final String artistName) {
 
         // Create a new bundle to transfer the album info
@@ -81,31 +76,24 @@ public final class NavUtils {
     }
 
     /**
-     * Opens the sound effects panel or DSP manager in CM
+     * Opens the profile of an artist.
      * 
-     * @param context The {@link SherlockFragmentActivity} to use.
+     * @param context The {@link Activity} to use.
+     * @param artistName The name of the artist
      */
-    public static void openEffectsPanel(final SherlockFragmentActivity context) {
-        try {
-            final Intent effects = new Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL);
-            effects.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, MusicUtils.getCurrentAudioId());
-            context.startActivity(effects);
-            // Make sure the notification starts
-            MusicUtils.startBackgroundService(context);
-        } catch (final Exception notFound) {
-            Crouton.makeText(context, context.getString(R.string.no_effects_for_you),
-                    Crouton.STYLE_ALERT);
-        }
-    }
+    public static void openArtistProfile(final Activity context,
+            final String artistName) {
 
-    /**
-     * Opens to {@link SettingsActivity}.
-     * 
-     * @param activity The {@link SherlockFragmentActivity} to use.
-     */
-    public static void openSettings(final SherlockFragmentActivity activity) {
-        final Intent intent = new Intent(activity, SettingsActivity.class);
-        activity.startActivity(intent);
+        // Create a new bundle to transfer the artist info
+        final Bundle bundle = new Bundle();
+        bundle.putLong(Config.ID, MusicUtils.getIdForArtist(context, artistName));
+        bundle.putString(Config.MIME_TYPE, MediaStore.Audio.Artists.CONTENT_TYPE);
+        bundle.putString(Config.ARTIST_NAME, artistName);
+
+        // Create the intent to launch the profile activity
+        final Intent intent = new Intent(context, ProfileActivity.class);
+        intent.putExtras(bundle);
+        context.startActivity(intent);
     }
 
     /**
@@ -123,6 +111,24 @@ public final class NavUtils {
     }
 
     /**
+     * Opens the sound effects panel or DSP manager in CM
+     * 
+     * @param context The {@link Activity} to use.
+     */
+    public static void openEffectsPanel(final Activity context) {
+        try {
+            final Intent effects = new Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL);
+            effects.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, MusicUtils.getCurrentAudioId());
+            context.startActivity(effects);
+            // Make sure the notification starts
+            MusicUtils.startBackgroundService(context);
+        } catch (final Exception notFound) {
+            Crouton.makeText(context, context.getString(R.string.no_effects_for_you),
+                    Style.ALERT);
+        }
+    }
+
+    /**
      * Opens to {@link SearchActivity}.
      * 
      * @param activity The {@link Activity} to use.
@@ -137,16 +143,12 @@ public final class NavUtils {
     }
 
     /**
-     * Opens to {@link HomeActivity}.
+     * Opens to {@link SettingsActivity}.
      * 
      * @param activity The {@link Activity} to use.
      */
-    public static void goHome(final Activity activity) {
-        final Intent intent = new Intent(activity, HomeActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    public static void openSettings(final Activity activity) {
+        final Intent intent = new Intent(activity, SettingsActivity.class);
         activity.startActivity(intent);
-        activity.finish();
     }
 }

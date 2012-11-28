@@ -1,6 +1,9 @@
 
 package com.andrew.apollo.widgets;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,16 +13,13 @@ import android.widget.BaseAdapter;
 
 import com.andrew.apollo.R;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 public class SeparatedListAdapter extends BaseAdapter {
 
-    public final Map<String, Adapter> mSections = new LinkedHashMap<String, Adapter>();
+    public final static int TYPE_SECTION_HEADER = 0;
 
     public final ArrayAdapter<String> mHeaders;
 
-    public final static int TYPE_SECTION_HEADER = 0;
+    public final Map<String, Adapter> mSections = new LinkedHashMap<String, Adapter>();
 
     /**
      * Constructor of <code>SeparatedListAdapter</code>
@@ -28,6 +28,28 @@ public class SeparatedListAdapter extends BaseAdapter {
      */
     public SeparatedListAdapter(final Context context) {
         mHeaders = new ArrayAdapter<String>(context, R.layout.list_header);
+    }
+
+    public void addSection(final String section, final Adapter adapter) {
+        mHeaders.add(section);
+        mSections.put(section, adapter);
+    }
+
+    public boolean areAllItemsSelectable() {
+        return false;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getCount() {
+        // total together all mSections, plus one for each section header
+        int total = 0;
+        for (final Adapter adapter : mSections.values()) {
+            total += adapter.getCount() + 1;
+        }
+        return total;
     }
 
     /**
@@ -57,26 +79,8 @@ public class SeparatedListAdapter extends BaseAdapter {
      * {@inheritDoc}
      */
     @Override
-    public int getCount() {
-        // total together all mSections, plus one for each section header
-        int total = 0;
-        for (final Adapter adapter : mSections.values()) {
-            total += adapter.getCount() + 1;
-        }
-        return total;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int getViewTypeCount() {
-        // assume that mHeaders count as one, then total all mSections
-        int total = 1;
-        for (final Adapter adapter : mSections.values()) {
-            total += adapter.getViewTypeCount();
-        }
-        return total;
+    public long getItemId(final int position) {
+        return position;
     }
 
     /**
@@ -102,18 +106,6 @@ public class SeparatedListAdapter extends BaseAdapter {
             type += adapter.getViewTypeCount();
         }
         return -1;
-    }
-
-    public boolean areAllItemsSelectable() {
-        return false;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isEnabled(final int position) {
-        return getItemViewType(position) != TYPE_SECTION_HEADER;
     }
 
     /**
@@ -145,13 +137,21 @@ public class SeparatedListAdapter extends BaseAdapter {
      * {@inheritDoc}
      */
     @Override
-    public long getItemId(final int position) {
-        return position;
+    public int getViewTypeCount() {
+        // assume that mHeaders count as one, then total all mSections
+        int total = 1;
+        for (final Adapter adapter : mSections.values()) {
+            total += adapter.getViewTypeCount();
+        }
+        return total;
     }
 
-    public void addSection(final String section, final Adapter adapter) {
-        mHeaders.add(section);
-        mSections.put(section, adapter);
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isEnabled(final int position) {
+        return getItemViewType(position) != TYPE_SECTION_HEADER;
     }
 
 }

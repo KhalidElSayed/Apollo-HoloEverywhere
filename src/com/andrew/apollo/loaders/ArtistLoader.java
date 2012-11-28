@@ -11,6 +11,9 @@
 
 package com.andrew.apollo.loaders;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import android.content.Context;
 import android.database.Cursor;
 import android.provider.BaseColumns;
@@ -23,9 +26,6 @@ import com.andrew.apollo.utils.Lists;
 import com.andrew.apollo.utils.MusicUtils;
 import com.andrew.apollo.utils.PreferenceUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Used to query {@link MediaStore.Audio.Artists.EXTERNAL_CONTENT_URI} and
  * return the artists on a user's device.
@@ -33,6 +33,26 @@ import java.util.List;
  * @author Andrew Neal (andrewdneal@gmail.com)
  */
 public class ArtistLoader extends WrappedAsyncTaskLoader<List<Artist>> {
+
+    /**
+     * Creates the {@link Cursor} used to run the query.
+     * 
+     * @param context The {@link Context} to use.
+     * @return The {@link Cursor} used to run the artist query.
+     */
+    public static final Cursor makeArtistCursor(final Context context) {
+        return context.getContentResolver().query(MediaStore.Audio.Artists.EXTERNAL_CONTENT_URI,
+                new String[] {
+                        /* 0 */
+                        BaseColumns._ID,
+                        /* 1 */
+                        ArtistColumns.ARTIST,
+                        /* 2 */
+                        ArtistColumns.NUMBER_OF_ALBUMS,
+                        /* 3 */
+                        ArtistColumns.NUMBER_OF_TRACKS
+                }, null, null, PreferenceUtils.getInstace(context).getArtistSortOrder());
+    }
 
     /**
      * The result
@@ -97,25 +117,5 @@ public class ArtistLoader extends WrappedAsyncTaskLoader<List<Artist>> {
             mCursor = null;
         }
         return mArtistsList;
-    }
-
-    /**
-     * Creates the {@link Cursor} used to run the query.
-     * 
-     * @param context The {@link Context} to use.
-     * @return The {@link Cursor} used to run the artist query.
-     */
-    public static final Cursor makeArtistCursor(final Context context) {
-        return context.getContentResolver().query(MediaStore.Audio.Artists.EXTERNAL_CONTENT_URI,
-                new String[] {
-                        /* 0 */
-                        BaseColumns._ID,
-                        /* 1 */
-                        ArtistColumns.ARTIST,
-                        /* 2 */
-                        ArtistColumns.NUMBER_OF_ALBUMS,
-                        /* 3 */
-                        ArtistColumns.NUMBER_OF_TRACKS
-                }, null, null, PreferenceUtils.getInstace(context).getArtistSortOrder());
     }
 }

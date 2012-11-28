@@ -16,9 +16,9 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-import android.annotation.TargetApi;
-
 import java.util.concurrent.TimeUnit;
+
+import android.annotation.TargetApi;
 
 /**
  * An object that measures elapsed time in nanoseconds. It is useful to measure
@@ -62,13 +62,69 @@ import java.util.concurrent.TimeUnit;
 @TargetApi(9)
 public final class Stopwatch {
 
-    private final Ticker mTicker;
+    private static String abbreviate(final TimeUnit unit) {
+        switch (unit) {
+            case NANOSECONDS:
+                return "ns";
+            case MICROSECONDS:
+                return "\u03bcs";
+            case MILLISECONDS:
+                return "ms";
+            case SECONDS:
+                return "s";
+            default:
+                throw new AssertionError();
+        }
+    }
 
-    private boolean mIsRunning;
+    /**
+     * Ensures that an object reference passed as a parameter to the calling
+     * method is not null.
+     * 
+     * @param reference an object reference
+     * @return the non-null reference that was validated
+     * @throws NullPointerException if {@code reference} is null
+     */
+    public static <T> T checkNotNull(final T reference) {
+        if (reference == null) {
+            throw new NullPointerException();
+        }
+        return reference;
+    }
+
+    /**
+     * Ensures the truth of an expression involving the state of the calling
+     * instance, but not involving any parameters to the calling method.
+     * 
+     * @param expression a boolean expression
+     * @throws IllegalStateException if {@code expression} is false
+     */
+    public static void checkState(final boolean expression) {
+        if (!expression) {
+            throw new IllegalStateException();
+        }
+    }
+
+    private static TimeUnit chooseUnit(final long nanos) {
+        if (SECONDS.convert(nanos, NANOSECONDS) > 0) {
+            return SECONDS;
+        }
+        if (MILLISECONDS.convert(nanos, NANOSECONDS) > 0) {
+            return MILLISECONDS;
+        }
+        if (MICROSECONDS.convert(nanos, NANOSECONDS) > 0) {
+            return MICROSECONDS;
+        }
+        return NANOSECONDS;
+    }
 
     private long mElapsedNanos;
 
+    private boolean mIsRunning;
+
     private long mStartTick;
+
+    private final Ticker mTicker;
 
     /**
      * Creates (but does not start) a new stopwatch using
@@ -87,12 +143,49 @@ public final class Stopwatch {
     }
 
     /**
+     * Returns the current elapsed time shown on this stopwatch, expressed in
+     * milliseconds, with any fraction rounded down. This is identical to
+     * {@code elapsedTime(TimeUnit.MILLISECONDS)}.
+     */
+    public long elapsedMillis() {
+        return elapsedTime(MILLISECONDS);
+    }
+
+    private long elapsedNanos() {
+        return mIsRunning ? mTicker.read() - mStartTick + mElapsedNanos : mElapsedNanos;
+    }
+
+    /**
+     * Returns the current elapsed time shown on this stopwatch, expressed in
+     * the desired time unit, with any fraction rounded down.
+     * <p>
+     * Note that the overhead of measurement can be more than a microsecond, so
+     * it is generally not useful to specify {@link TimeUnit#NANOSECONDS}
+     * precision here.
+     */
+    public long elapsedTime(final TimeUnit desiredUnit) {
+        return desiredUnit.convert(elapsedNanos(), NANOSECONDS);
+    }
+
+    /**
      * Returns {@code true} if {@link #start()} has been called on this
      * stopwatch, and {@link #stop()} has not been called since the last call to
      * {@code start()}.
      */
     public boolean isRunning() {
         return mIsRunning;
+    }
+
+    /**
+     * Sets the elapsed time for this stopwatch to zero, and places it in a
+     * stopped state.
+     * 
+     * @return this {@code Stopwatch} instance
+     */
+    public Stopwatch reset() {
+        mElapsedNanos = 0;
+        mIsRunning = false;
+        return this;
     }
 
     /**
@@ -124,43 +217,6 @@ public final class Stopwatch {
     }
 
     /**
-     * Sets the elapsed time for this stopwatch to zero, and places it in a
-     * stopped state.
-     * 
-     * @return this {@code Stopwatch} instance
-     */
-    public Stopwatch reset() {
-        mElapsedNanos = 0;
-        mIsRunning = false;
-        return this;
-    }
-
-    private long elapsedNanos() {
-        return mIsRunning ? mTicker.read() - mStartTick + mElapsedNanos : mElapsedNanos;
-    }
-
-    /**
-     * Returns the current elapsed time shown on this stopwatch, expressed in
-     * the desired time unit, with any fraction rounded down.
-     * <p>
-     * Note that the overhead of measurement can be more than a microsecond, so
-     * it is generally not useful to specify {@link TimeUnit#NANOSECONDS}
-     * precision here.
-     */
-    public long elapsedTime(final TimeUnit desiredUnit) {
-        return desiredUnit.convert(elapsedNanos(), NANOSECONDS);
-    }
-
-    /**
-     * Returns the current elapsed time shown on this stopwatch, expressed in
-     * milliseconds, with any fraction rounded down. This is identical to
-     * {@code elapsedTime(TimeUnit.MILLISECONDS)}.
-     */
-    public long elapsedMillis() {
-        return elapsedTime(MILLISECONDS);
-    }
-
-    /**
      * Returns a string representation of the current elapsed time.
      */
     @Override
@@ -182,66 +238,10 @@ public final class Stopwatch {
         final long mNanos = elapsedNanos();
 
         final TimeUnit mUnit = chooseUnit(mNanos);
-        final double mValue = (double)mNanos / NANOSECONDS.convert(1, mUnit);
+        final double mValue = (double) mNanos / NANOSECONDS.convert(1, mUnit);
 
         /* Too bad this functionality is not exposed as a regular method call */
         return String.format("%." + significantDigits + "g %s", mValue, abbreviate(mUnit));
-    }
-
-    private static TimeUnit chooseUnit(final long nanos) {
-        if (SECONDS.convert(nanos, NANOSECONDS) > 0) {
-            return SECONDS;
-        }
-        if (MILLISECONDS.convert(nanos, NANOSECONDS) > 0) {
-            return MILLISECONDS;
-        }
-        if (MICROSECONDS.convert(nanos, NANOSECONDS) > 0) {
-            return MICROSECONDS;
-        }
-        return NANOSECONDS;
-    }
-
-    private static String abbreviate(final TimeUnit unit) {
-        switch (unit) {
-            case NANOSECONDS:
-                return "ns";
-            case MICROSECONDS:
-                return "\u03bcs";
-            case MILLISECONDS:
-                return "ms";
-            case SECONDS:
-                return "s";
-            default:
-                throw new AssertionError();
-        }
-    }
-
-    /**
-     * Ensures the truth of an expression involving the state of the calling
-     * instance, but not involving any parameters to the calling method.
-     * 
-     * @param expression a boolean expression
-     * @throws IllegalStateException if {@code expression} is false
-     */
-    public static void checkState(final boolean expression) {
-        if (!expression) {
-            throw new IllegalStateException();
-        }
-    }
-
-    /**
-     * Ensures that an object reference passed as a parameter to the calling
-     * method is not null.
-     * 
-     * @param reference an object reference
-     * @return the non-null reference that was validated
-     * @throws NullPointerException if {@code reference} is null
-     */
-    public static <T> T checkNotNull(final T reference) {
-        if (reference == null) {
-            throw new NullPointerException();
-        }
-        return reference;
     }
 
 }

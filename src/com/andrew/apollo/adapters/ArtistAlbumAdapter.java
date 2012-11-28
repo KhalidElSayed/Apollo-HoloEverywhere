@@ -11,6 +11,10 @@
 
 package com.andrew.apollo.adapters;
 
+import java.util.List;
+
+import org.holoeverywhere.app.Activity;
+
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -19,7 +23,6 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 
-import com.actionbarsherlock.app.SherlockFragmentActivity;
 import com.andrew.apollo.Config;
 import com.andrew.apollo.R;
 import com.andrew.apollo.cache.ImageFetcher;
@@ -29,8 +32,6 @@ import com.andrew.apollo.ui.fragments.profile.ArtistAlbumFragment;
 import com.andrew.apollo.utils.ApolloUtils;
 import com.andrew.apollo.utils.Lists;
 import com.andrew.apollo.utils.MusicUtils;
-
-import java.util.List;
 
 /**
  * This {@link ArrayAdapter} is used to display the albums for a particular
@@ -56,9 +57,9 @@ public class ArtistAlbumAdapter extends ArrayAdapter<Album> {
     private static final int VIEW_TYPE_COUNT = 3;
 
     /**
-     * LayoutInflater
+     * Used to set the size of the data in the adapter
      */
-    private final LayoutInflater mInflater;
+    private List<Album> mCount = Lists.newArrayList();
 
     /**
      * Fake header
@@ -66,19 +67,19 @@ public class ArtistAlbumAdapter extends ArrayAdapter<Album> {
     private final View mHeader;
 
     /**
-     * The resource Id of the layout to inflate
-     */
-    private final int mLayoutId;
-
-    /**
      * Image cache and image fetcher
      */
     private final ImageFetcher mImageFetcher;
 
     /**
-     * Used to set the size of the data in the adapter
+     * LayoutInflater
      */
-    private List<Album> mCount = Lists.newArrayList();
+    private final LayoutInflater mInflater;
+
+    /**
+     * The resource Id of the layout to inflate
+     */
+    private final int mLayoutId;
 
     /**
      * Constructor of <code>ArtistAlbumAdapter</code>
@@ -95,56 +96,14 @@ public class ArtistAlbumAdapter extends ArrayAdapter<Album> {
         // Get the layout Id
         mLayoutId = layoutId;
         // Initialize the cache & image fetcher
-        mImageFetcher = ApolloUtils.getImageFetcher((SherlockFragmentActivity)context);
+        mImageFetcher = ApolloUtils.getImageFetcher((Activity) context);
     }
 
     /**
-     * {@inheritDoc}
+     * Flushes the disk cache.
      */
-    @Override
-    public View getView(final int position, View convertView, final ViewGroup parent) {
-
-        // Return a faux header at position 0
-        if (position == 0) {
-            return mHeader;
-        }
-
-        // Recycle MusicHolder's items
-        MusicHolder holder;
-        if (convertView == null) {
-            convertView = LayoutInflater.from(getContext()).inflate(mLayoutId, parent, false);
-            holder = new MusicHolder(convertView);
-            // Remove the background layer
-            holder.mOverlay.get().setBackgroundColor(0);
-            convertView.setTag(holder);
-        } else {
-            holder = (MusicHolder)convertView.getTag();
-        }
-
-        // Retrieve the album
-        final Album album = getItem(position - 1);
-        final String albumName = album.mAlbumName;
-
-        // Set each album name (line one)
-        holder.mLineOne.get().setText(albumName);
-        // Set the number of songs (line two)
-        holder.mLineTwo.get().setText(album.mSongNumber);
-        // Set the album year (line three)
-        holder.mLineThree.get().setText(album.mYear);
-        // Asynchronously load the album images into the adapter
-        mImageFetcher.loadAlbumImage(album.mArtistName, albumName, album.mAlbumId,
-                holder.mImage.get());
-        // Play the album when the artwork is touched
-        playAlbum(holder.mImage.get(), position);
-        return convertView;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean hasStableIds() {
-        return true;
+    public void flush() {
+        mImageFetcher.flush();
     }
 
     /**
@@ -171,6 +130,58 @@ public class ArtistAlbumAdapter extends ArrayAdapter<Album> {
      * {@inheritDoc}
      */
     @Override
+    public int getItemViewType(final int position) {
+        if (position == 0) {
+            return ITEM_VIEW_TYPE_HEADER;
+        }
+        return ITEM_VIEW_TYPE_MUSIC;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public View getView(final int position, View convertView, final ViewGroup parent) {
+
+        // Return a faux header at position 0
+        if (position == 0) {
+            return mHeader;
+        }
+
+        // Recycle MusicHolder's items
+        MusicHolder holder;
+        if (convertView == null) {
+            convertView = LayoutInflater.from(getContext()).inflate(mLayoutId, parent, false);
+            holder = new MusicHolder(convertView);
+            // Remove the background layer
+            holder.mOverlay.get().setBackgroundColor(0);
+            convertView.setTag(holder);
+        } else {
+            holder = (MusicHolder) convertView.getTag();
+        }
+
+        // Retrieve the album
+        final Album album = getItem(position - 1);
+        final String albumName = album.mAlbumName;
+
+        // Set each album name (line one)
+        holder.mLineOne.get().setText(albumName);
+        // Set the number of songs (line two)
+        holder.mLineTwo.get().setText(album.mSongNumber);
+        // Set the album year (line three)
+        holder.mLineThree.get().setText(album.mYear);
+        // Asynchronously load the album images into the adapter
+        mImageFetcher.loadAlbumImage(album.mArtistName, albumName, album.mAlbumId,
+                holder.mImage.get());
+        // Play the album when the artwork is touched
+        playAlbum(holder.mImage.get(), position);
+        return convertView;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public int getViewTypeCount() {
         return VIEW_TYPE_COUNT;
     }
@@ -179,11 +190,8 @@ public class ArtistAlbumAdapter extends ArrayAdapter<Album> {
      * {@inheritDoc}
      */
     @Override
-    public int getItemViewType(final int position) {
-        if (position == 0) {
-            return ITEM_VIEW_TYPE_HEADER;
-        }
-        return ITEM_VIEW_TYPE_MUSIC;
+    public boolean hasStableIds() {
+        return true;
     }
 
     /**
@@ -208,22 +216,6 @@ public class ArtistAlbumAdapter extends ArrayAdapter<Album> {
     }
 
     /**
-     * Method that unloads and clears the items in the adapter
-     */
-    public void unload() {
-        clear();
-    }
-
-    /**
-     * @param pause True to temporarily pause the disk cache, false otherwise.
-     */
-    public void setPauseDiskCache(final boolean pause) {
-        if (mImageFetcher != null) {
-            mImageFetcher.setPauseDiskCache(pause);
-        }
-    }
-
-    /**
      * @param album The key used to find the cached album to remove
      */
     public void removeFromCache(final Album album) {
@@ -240,9 +232,18 @@ public class ArtistAlbumAdapter extends ArrayAdapter<Album> {
     }
 
     /**
-     * Flushes the disk cache.
+     * @param pause True to temporarily pause the disk cache, false otherwise.
      */
-    public void flush() {
-        mImageFetcher.flush();
+    public void setPauseDiskCache(final boolean pause) {
+        if (mImageFetcher != null) {
+            mImageFetcher.setPauseDiskCache(pause);
+        }
+    }
+
+    /**
+     * Method that unloads and clears the items in the adapter
+     */
+    public void unload() {
+        clear();
     }
 }

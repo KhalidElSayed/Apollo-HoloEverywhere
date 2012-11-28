@@ -14,18 +14,14 @@ import android.widget.ListView;
  */
 public class SimpleFloatViewManager implements DragSortListView.FloatViewManager {
 
-    private final ListView mListView;
+    private int mFloatBGColor = Color.BLACK;
 
     private Bitmap mFloatBitmap;
 
-    private int mFloatBGColor = Color.BLACK;
+    private final ListView mListView;
 
     public SimpleFloatViewManager(ListView lv) {
         mListView = lv;
-    }
-
-    public void setBackgroundColor(int color) {
-        mFloatBGColor = color;
     }
 
     /**
@@ -61,7 +57,7 @@ public class SimpleFloatViewManager implements DragSortListView.FloatViewManager
      */
     @Override
     public void onDestroyFloatView(View floatView) {
-        ((ImageView)floatView).setImageDrawable(null);
+        ((ImageView) floatView).setImageDrawable(null);
 
         mFloatBitmap.recycle();
         mFloatBitmap = null;
@@ -73,5 +69,9 @@ public class SimpleFloatViewManager implements DragSortListView.FloatViewManager
     @Override
     public void onDragFloatView(View floatView, Point position, Point touch) {
         /* Nothing to do */
+    }
+
+    public void setBackgroundColor(int color) {
+        mFloatBGColor = color;
     }
 }

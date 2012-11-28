@@ -11,13 +11,17 @@
 
 package com.andrew.apollo.menu;
 
-import android.app.Dialog;
+import org.holoeverywhere.widget.Button;
+
 import android.content.ContentResolver;
 import android.content.ContentValues;
+import android.content.DialogInterface;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.provider.BaseColumns;
 import android.provider.MediaStore;
 import android.provider.MediaStore.Audio;
+import android.provider.MediaStore.Audio.PlaylistsColumns;
 
 import com.andrew.apollo.R;
 import com.andrew.apollo.format.Capitalize;
@@ -29,10 +33,6 @@ import com.andrew.apollo.utils.MusicUtils;
  * @author Andrew Neal (andrewdneal@gmail.com)
  */
 public class RenamePlaylist extends BasePlaylistDialog {
-
-    private String mOriginalName;
-
-    private long mRenameId;
 
     /**
      * @param id The Id of the playlist to rename
@@ -46,13 +46,31 @@ public class RenamePlaylist extends BasePlaylistDialog {
         return frag;
     }
 
+    private String mOriginalName;
+
+    private long mRenameId;
+
     /**
-     * {@inheritDoc}
+     * @param id The Id of the playlist
+     * @return The name of the playlist
      */
-    @Override
-    public void onSaveInstanceState(final Bundle outcicle) {
-        outcicle.putString("defaultname", mPlaylist.getText().toString());
-        outcicle.putLong("rename", mRenameId);
+    private String getPlaylistNameFromId(final long id) {
+        Cursor cursor = getSupportActivity().getContentResolver().query(
+                MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI, new String[] {
+                    PlaylistsColumns.NAME
+                }, BaseColumns._ID + "=?", new String[] {
+                    Long.valueOf(id).toString()
+                }, PlaylistsColumns.NAME);
+        String playlistName = null;
+        if (cursor != null) {
+            cursor.moveToFirst();
+            if (!cursor.isAfterLast()) {
+                playlistName = cursor.getString(0);
+            }
+        }
+        cursor.close();
+        cursor = null;
+        return playlistName;
     }
 
     /**
@@ -80,11 +98,11 @@ public class RenamePlaylist extends BasePlaylistDialog {
     public void onSaveClick() {
         final String playlistName = mPlaylist.getText().toString();
         if (playlistName != null && playlistName.length() > 0) {
-            final ContentResolver resolver = getSherlockActivity().getContentResolver();
+            final ContentResolver resolver = getSupportActivity().getContentResolver();
             final ContentValues values = new ContentValues(1);
-            values.put(Audio.Playlists.NAME, Capitalize.capitalize(playlistName));
+            values.put(PlaylistsColumns.NAME, Capitalize.capitalize(playlistName));
             resolver.update(Audio.Playlists.EXTERNAL_CONTENT_URI, values,
-                    MediaStore.Audio.Playlists._ID + "=?", new String[] {
+                    BaseColumns._ID + "=?", new String[] {
                         Long.valueOf(mRenameId).toString()
                     });
             closeKeyboard();
@@ -92,10 +110,19 @@ public class RenamePlaylist extends BasePlaylistDialog {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onSaveInstanceState(final Bundle outcicle) {
+        outcicle.putString("defaultname", mPlaylist.getText().toString());
+        outcicle.putLong("rename", mRenameId);
+    }
+
     @Override
     public void onTextChangedListener() {
         final String playlistName = mPlaylist.getText().toString();
-        mSaveButton = mPlaylistDialog.getButton(Dialog.BUTTON_POSITIVE);
+        mSaveButton = (Button) mPlaylistDialog.getButton(DialogInterface.BUTTON_POSITIVE);
         if (mSaveButton == null) {
             return;
         }
@@ -103,35 +130,12 @@ public class RenamePlaylist extends BasePlaylistDialog {
             mSaveButton.setEnabled(false);
         } else {
             mSaveButton.setEnabled(true);
-            if (MusicUtils.getIdForPlaylist(getSherlockActivity(), playlistName) >= 0) {
+            if (MusicUtils.getIdForPlaylist(getSupportActivity(), playlistName) >= 0) {
                 mSaveButton.setText(R.string.overwrite);
             } else {
                 mSaveButton.setText(R.string.save);
             }
         }
-    }
-
-    /**
-     * @param id The Id of the playlist
-     * @return The name of the playlist
-     */
-    private String getPlaylistNameFromId(final long id) {
-        Cursor cursor = getSherlockActivity().getContentResolver().query(
-                MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI, new String[] {
-                    MediaStore.Audio.Playlists.NAME
-                }, MediaStore.Audio.Playlists._ID + "=?", new String[] {
-                    Long.valueOf(id).toString()
-                }, MediaStore.Audio.Playlists.NAME);
-        String playlistName = null;
-        if (cursor != null) {
-            cursor.moveToFirst();
-            if (!cursor.isAfterLast()) {
-                playlistName = cursor.getString(0);
-            }
-        }
-        cursor.close();
-        cursor = null;
-        return playlistName;
     }
 
 }

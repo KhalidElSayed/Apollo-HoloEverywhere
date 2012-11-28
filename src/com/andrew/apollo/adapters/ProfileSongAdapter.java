@@ -11,6 +11,8 @@
 
 package com.andrew.apollo.adapters;
 
+import java.util.List;
+
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -27,8 +29,6 @@ import com.andrew.apollo.ui.fragments.profile.GenreSongFragment;
 import com.andrew.apollo.ui.fragments.profile.LastAddedFragment;
 import com.andrew.apollo.ui.fragments.profile.PlaylistSongFragment;
 import com.andrew.apollo.utils.Lists;
-
-import java.util.List;
 
 /**
  * This {@link ArrayAdapter} is used to display the songs for a particular
@@ -56,14 +56,19 @@ public class ProfileSongAdapter extends ArrayAdapter<Song> {
     private static final int VIEW_TYPE_COUNT = 3;
 
     /**
-     * LayoutInflater
+     * Used to set the size of the data in the adapter
      */
-    private final LayoutInflater mInflater;
+    private List<Song> mCount = Lists.newArrayList();
 
     /**
      * Fake header
      */
     private final View mHeader;
+
+    /**
+     * LayoutInflater
+     */
+    private final LayoutInflater mInflater;
 
     /**
      * The resource Id of the layout to inflate
@@ -75,31 +80,6 @@ public class ProfileSongAdapter extends ArrayAdapter<Song> {
      * makes that happen while showing the album name on all others
      */
     private final boolean mShowDuration;
-
-    /**
-     * Used to set the size of the data in the adapter
-     */
-    private List<Song> mCount = Lists.newArrayList();
-
-    /**
-     * Constructor of <code>ProfileSongAdapter</code>
-     * 
-     * @param context The {@link Context} to use
-     * @param layoutId The resource Id of the view to inflate.
-     * @param yesToDuration True to show the duration of a track on line two,
-     *            false otherwise
-     */
-    public ProfileSongAdapter(final Context context, final int layoutId, final boolean yesToDuration) {
-        super(context, 0);
-        // Used to create the custom layout
-        mInflater = LayoutInflater.from(context);
-        // Cache the header
-        mHeader = mInflater.inflate(R.layout.faux_carousel, null);
-        // Get the layout Id
-        mLayoutId = layoutId;
-        // Know what to put in line two
-        mShowDuration = yesToDuration;
-    }
 
     /**
      * Constructor of <code>ProfileSongAdapter</code>
@@ -120,44 +100,23 @@ public class ProfileSongAdapter extends ArrayAdapter<Song> {
     }
 
     /**
-     * {@inheritDoc}
+     * Constructor of <code>ProfileSongAdapter</code>
+     * 
+     * @param context The {@link Context} to use
+     * @param layoutId The resource Id of the view to inflate.
+     * @param yesToDuration True to show the duration of a track on line two,
+     *            false otherwise
      */
-    @Override
-    public View getView(final int position, View convertView, final ViewGroup parent) {
-
-        // Return a faux header at position 0
-        if (position == 0) {
-            return mHeader;
-        }
-
-        // Recycle MusicHolder's items
-        MusicHolder holder;
-        if (convertView == null) {
-            convertView = LayoutInflater.from(getContext()).inflate(mLayoutId, parent, false);
-            holder = new MusicHolder(convertView);
-            // Hide the third line of text
-            holder.mLineThree.get().setVisibility(View.GONE);
-            convertView.setTag(holder);
-        } else {
-            holder = (MusicHolder)convertView.getTag();
-        }
-
-        // Retrieve the album
-        final Song song = getItem(position - 1);
-
-        // Set each track name (line one)
-        holder.mLineOne.get().setText(song.mSongName);
-        // Set the duration or album name (line two)
-        holder.mLineTwo.get().setText(mShowDuration ? song.mDuration : song.mAlbumName);
-        return convertView;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean hasStableIds() {
-        return true;
+    public ProfileSongAdapter(final Context context, final int layoutId, final boolean yesToDuration) {
+        super(context, 0);
+        // Used to create the custom layout
+        mInflater = LayoutInflater.from(context);
+        // Cache the header
+        mHeader = mInflater.inflate(R.layout.faux_carousel, null);
+        // Get the layout Id
+        mLayoutId = layoutId;
+        // Know what to put in line two
+        mShowDuration = yesToDuration;
     }
 
     /**
@@ -184,14 +143,6 @@ public class ProfileSongAdapter extends ArrayAdapter<Song> {
      * {@inheritDoc}
      */
     @Override
-    public int getViewTypeCount() {
-        return VIEW_TYPE_COUNT;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public int getItemViewType(final int position) {
         if (position == 0) {
             return ITEM_VIEW_TYPE_HEADER;
@@ -200,10 +151,52 @@ public class ProfileSongAdapter extends ArrayAdapter<Song> {
     }
 
     /**
-     * Method that unloads and clears the items in the adapter
+     * {@inheritDoc}
      */
-    public void unload() {
-        clear();
+    @Override
+    public View getView(final int position, View convertView, final ViewGroup parent) {
+
+        // Return a faux header at position 0
+        if (position == 0) {
+            return mHeader;
+        }
+
+        // Recycle MusicHolder's items
+        MusicHolder holder;
+        if (convertView == null) {
+            convertView = LayoutInflater.from(getContext()).inflate(mLayoutId, parent, false);
+            holder = new MusicHolder(convertView);
+            // Hide the third line of text
+            holder.mLineThree.get().setVisibility(View.GONE);
+            convertView.setTag(holder);
+        } else {
+            holder = (MusicHolder) convertView.getTag();
+        }
+
+        // Retrieve the album
+        final Song song = getItem(position - 1);
+
+        // Set each track name (line one)
+        holder.mLineOne.get().setText(song.mSongName);
+        // Set the duration or album name (line two)
+        holder.mLineTwo.get().setText(mShowDuration ? song.mDuration : song.mAlbumName);
+        return convertView;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getViewTypeCount() {
+        return VIEW_TYPE_COUNT;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean hasStableIds() {
+        return true;
     }
 
     /**
@@ -211,6 +204,13 @@ public class ProfileSongAdapter extends ArrayAdapter<Song> {
      */
     public void setCount(final List<Song> data) {
         mCount = data;
+    }
+
+    /**
+     * Method that unloads and clears the items in the adapter
+     */
+    public void unload() {
+        clear();
     }
 
 }

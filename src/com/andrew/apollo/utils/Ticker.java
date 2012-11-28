@@ -26,6 +26,22 @@ package com.andrew.apollo.utils;
  */
 public abstract class Ticker {
 
+    private static final Ticker SYSTEM_TICKER = new Ticker() {
+        @Override
+        public long read() {
+            return System.nanoTime();
+        }
+    };
+
+    /**
+     * A ticker that reads the current time using {@link System#nanoTime}.
+     * 
+     * @since 10.0
+     */
+    public static Ticker systemTicker() {
+        return SYSTEM_TICKER;
+    }
+
     /**
      * Constructor for use by subclasses.
      */
@@ -37,20 +53,4 @@ public abstract class Ticker {
      * of reference.
      */
     public abstract long read();
-
-    /**
-     * A ticker that reads the current time using {@link System#nanoTime}.
-     * 
-     * @since 10.0
-     */
-    public static Ticker systemTicker() {
-        return SYSTEM_TICKER;
-    }
-
-    private static final Ticker SYSTEM_TICKER = new Ticker() {
-        @Override
-        public long read() {
-            return System.nanoTime();
-        }
-    };
 }

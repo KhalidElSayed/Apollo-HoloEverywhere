@@ -11,19 +11,20 @@
 
 package com.andrew.apollo.loaders;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import android.content.Context;
 import android.database.Cursor;
 import android.provider.BaseColumns;
 import android.provider.MediaStore;
 import android.provider.MediaStore.Audio.AudioColumns;
+import android.provider.MediaStore.MediaColumns;
 
 import com.andrew.apollo.model.Song;
 import com.andrew.apollo.utils.Lists;
 import com.andrew.apollo.utils.MusicUtils;
 import com.andrew.apollo.utils.PreferenceUtils;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Used to query {@link MediaStore.Audio.Media.EXTERNAL_CONTENT_URI} and return
@@ -34,9 +35,36 @@ import java.util.List;
 public class AlbumSongLoader extends WrappedAsyncTaskLoader<List<Song>> {
 
     /**
-     * The result
+     * @param context The {@link Context} to use.
+     * @param albumId The Id of the album the songs belong to.
+     * @return The {@link Cursor} used to run the query.
      */
-    private final ArrayList<Song> mSongList = Lists.newArrayList();
+    public static final Cursor makeAlbumSongCursor(final Context context, final Long albumId) {
+        // Match the songs up with the artist
+        final StringBuilder selection = new StringBuilder();
+        selection.append(AudioColumns.IS_MUSIC + "=1");
+        selection.append(" AND " + MediaColumns.TITLE + " != ''");
+        selection.append(" AND " + AudioColumns.ALBUM_ID + "=" + albumId);
+        return context.getContentResolver().query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                new String[] {
+                        /* 0 */
+                        BaseColumns._ID,
+                        /* 1 */
+                        MediaColumns.TITLE,
+                        /* 2 */
+                        AudioColumns.ARTIST,
+                        /* 3 */
+                        AudioColumns.ALBUM,
+                        /* 4 */
+                        AudioColumns.DURATION
+                }, selection.toString(), null,
+                PreferenceUtils.getInstace(context).getAlbumSongSortOrder());
+    }
+
+    /**
+     * The Id of the album the songs belong to.
+     */
+    private final Long mAlbumID;
 
     /**
      * The {@link Cursor} used to run the query.
@@ -44,9 +72,9 @@ public class AlbumSongLoader extends WrappedAsyncTaskLoader<List<Song>> {
     private Cursor mCursor;
 
     /**
-     * The Id of the album the songs belong to.
+     * The result
      */
-    private final Long mAlbumID;
+    private final ArrayList<Song> mSongList = Lists.newArrayList();
 
     /**
      * Constructor of <code>AlbumSongHandler</code>
@@ -101,33 +129,6 @@ public class AlbumSongLoader extends WrappedAsyncTaskLoader<List<Song>> {
             mCursor = null;
         }
         return mSongList;
-    }
-
-    /**
-     * @param context The {@link Context} to use.
-     * @param albumId The Id of the album the songs belong to.
-     * @return The {@link Cursor} used to run the query.
-     */
-    public static final Cursor makeAlbumSongCursor(final Context context, final Long albumId) {
-        // Match the songs up with the artist
-        final StringBuilder selection = new StringBuilder();
-        selection.append(AudioColumns.IS_MUSIC + "=1");
-        selection.append(" AND " + AudioColumns.TITLE + " != ''");
-        selection.append(" AND " + AudioColumns.ALBUM_ID + "=" + albumId);
-        return context.getContentResolver().query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                new String[] {
-                        /* 0 */
-                        BaseColumns._ID,
-                        /* 1 */
-                        AudioColumns.TITLE,
-                        /* 2 */
-                        AudioColumns.ARTIST,
-                        /* 3 */
-                        AudioColumns.ALBUM,
-                        /* 4 */
-                        AudioColumns.DURATION
-                }, selection.toString(), null,
-                PreferenceUtils.getInstace(context).getAlbumSongSortOrder());
     }
 
 }

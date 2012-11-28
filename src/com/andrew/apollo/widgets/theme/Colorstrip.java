@@ -11,9 +11,10 @@
 
 package com.andrew.apollo.widgets.theme;
 
+import org.holoeverywhere.internal._View;
+
 import android.content.Context;
 import android.util.AttributeSet;
-import android.view.View;
 
 import com.andrew.apollo.utils.ThemeUtils;
 
@@ -23,7 +24,7 @@ import com.andrew.apollo.utils.ThemeUtils;
  * 
  * @author Andrew Neal (andrewdneal@gmail.com)
  */
-public class Colorstrip extends View {
+public class Colorstrip extends _View {
 
     /**
      * Resource name used to theme the colorstrip

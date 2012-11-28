@@ -11,7 +11,8 @@
 
 package com.andrew.apollo.utils;
 
-import android.app.Activity;
+import org.holoeverywhere.app.Activity;
+
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -50,9 +51,9 @@ import com.andrew.apollo.R;
 public class ThemeUtils {
 
     /**
-     * Used to searc the "Apps" section of the Play Store for "Apollo Themes".
+     * Default package name.
      */
-    private static final String SEARCH_URI = "https://market.android.com/search?q=%s&c=apps&featured=APP_STORE_SEARCH";
+    public static final String APOLLO_PACKAGE = "com.andrew.apollo";
 
     /**
      * Used to search the Play Store for a specific theme.
@@ -60,29 +61,38 @@ public class ThemeUtils {
     private static final String APP_URI = "market://details?id=";
 
     /**
-     * Default package name.
-     */
-    public static final String APOLLO_PACKAGE = "com.andrew.apollo";
-
-    /**
      * Current theme package name.
      */
     public static final String PACKAGE_NAME = "theme_package_name";
 
     /**
-     * Used to get and set the theme package name.
-     */
-    private final SharedPreferences mPreferences;
-
-    /**
-     * The theme package name.
-     */
-    private final String mThemePackage;
-
-    /**
      * The keyword to use when search for different themes.
      */
     private static String sApolloSearch;
+
+    /**
+     * Used to searc the "Apps" section of the Play Store for "Apollo Themes".
+     */
+    private static final String SEARCH_URI = "https://market.android.com/search?q=%s&c=apps&featured=APP_STORE_SEARCH";
+
+    /**
+     * Used to search the Play Store for a specific app.
+     * 
+     * @param context The {@link Context} to use.
+     * @param themeName The theme name to search for.
+     */
+    public static void openAppPage(final Context context, final String themeName) {
+        final Intent shopIntent = new Intent(Intent.ACTION_VIEW);
+        shopIntent.setData(Uri.parse(APP_URI + themeName));
+        shopIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        shopIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        context.startActivity(shopIntent);
+    }
+
+    /**
+     * Custom action bar layout
+     */
+    private final View mActionBarLayout;
 
     /**
      * This is the current theme color as set by the color picker.
@@ -95,14 +105,19 @@ public class ThemeUtils {
     private final PackageManager mPackageManager;
 
     /**
-     * Custom action bar layout
+     * Used to get and set the theme package name.
      */
-    private final View mActionBarLayout;
+    private final SharedPreferences mPreferences;
 
     /**
      * The theme resources.
      */
     private Resources mResources;
+
+    /**
+     * The theme package name.
+     */
+    private final String mThemePackage;
 
     /**
      * Constructor for <code>ThemeUtils</code>
@@ -130,32 +145,6 @@ public class ThemeUtils {
         mCurrentThemeColor = PreferenceUtils.getInstace(context).getDefaultThemeColor(context);
         // Inflate the custom layout
         mActionBarLayout = LayoutInflater.from(context).inflate(R.layout.action_bar, null);
-    }
-
-    /**
-     * Set the new theme package name.
-     * 
-     * @param packageName The package name of the theme to be set.
-     */
-    public void setThemePackageName(final String packageName) {
-        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(final Void... unused) {
-                final SharedPreferences.Editor editor = mPreferences.edit();
-                editor.putString(PACKAGE_NAME, packageName);
-                SharedPreferencesCompat.apply(editor);
-                return null;
-            }
-        }, (Void[])null);
-    }
-
-    /**
-     * Return the current theme package name.
-     * 
-     * @return The default theme package name.
-     */
-    public final String getThemePackageName() {
-        return mPreferences.getString(PACKAGE_NAME, APOLLO_PACKAGE);
     }
 
     /**
@@ -195,6 +184,15 @@ public class ThemeUtils {
     }
 
     /**
+     * Return the current theme package name.
+     * 
+     * @return The default theme package name.
+     */
+    public final String getThemePackageName() {
+        return mPreferences.getString(PACKAGE_NAME, APOLLO_PACKAGE);
+    }
+
+    /**
      * Used to tell if the action bar's backgrond color is dark or light and
      * depending on which the proper overflow icon is set from a style.
      * 
@@ -205,16 +203,30 @@ public class ThemeUtils {
     }
 
     /**
-     * Sets the corret overflow icon in the action bar depending on whether or
-     * not the current action bar color is dark or light.
+     * Sets the {@link MenuItem} icon for the add to Home screen action.
      * 
-     * @param app The {@link Activity} used to set the theme.
+     * @param context The {@link Context} to use.
+     * @param search The Menu used to find the "add_to_homescreen" item.
      */
-    public void setOverflowStyle(final Activity app) {
-        if (isActionBarDark()) {
-            app.setTheme(R.style.Apollo_Theme_Dark);
+    public void setAddToHomeScreenIcon(final Menu search) {
+        final MenuItem pinnAction = search.findItem(R.id.menu_add_to_homescreen);
+        final String pinnIconId = "ic_action_pinn_to_home";
+        setMenuItemColor(pinnAction, "pinn_to_action", pinnIconId);
+    }
+
+    /**
+     * Sets the {@link MenuItem} icon for the favorites action.
+     * 
+     * @param context The {@link Context} to use.
+     * @param favorite The favorites action.
+     */
+    public void setFavoriteIcon(final Menu favorite) {
+        final MenuItem favoriteAction = favorite.findItem(R.id.menu_favorite);
+        final String favoriteIconId = "ic_action_favorite";
+        if (MusicUtils.isFavorite()) {
+            setMenuItemColor(favoriteAction, "favorite_selected", favoriteIconId);
         } else {
-            app.setTheme(R.style.Apollo_Theme_Light);
+            setMenuItemColor(favoriteAction, "favorite_normal", favoriteIconId);
         }
     }
 
@@ -235,7 +247,7 @@ public class ThemeUtils {
             return;
         }
 
-        final Bitmap maskBitmap = ((BitmapDrawable)maskDrawable).getBitmap();
+        final Bitmap maskBitmap = ((BitmapDrawable) maskDrawable).getBitmap();
         final int width = maskBitmap.getWidth();
         final int height = maskBitmap.getHeight();
 
@@ -254,18 +266,16 @@ public class ThemeUtils {
     }
 
     /**
-     * Sets the {@link MenuItem} icon for the favorites action.
+     * Sets the corret overflow icon in the action bar depending on whether or
+     * not the current action bar color is dark or light.
      * 
-     * @param context The {@link Context} to use.
-     * @param favorite The favorites action.
+     * @param app The {@link Activity} used to set the theme.
      */
-    public void setFavoriteIcon(final Menu favorite) {
-        final MenuItem favoriteAction = favorite.findItem(R.id.menu_favorite);
-        final String favoriteIconId = "ic_action_favorite";
-        if (MusicUtils.isFavorite()) {
-            setMenuItemColor(favoriteAction, "favorite_selected", favoriteIconId);
+    public void setOverflowStyle(final Activity app) {
+        if (isActionBarDark()) {
+            app.setTheme(R.style.Apollo_Theme_Dark);
         } else {
-            setMenuItemColor(favoriteAction, "favorite_normal", favoriteIconId);
+            app.setTheme(R.style.Apollo_Theme_Light);
         }
     }
 
@@ -294,15 +304,67 @@ public class ThemeUtils {
     }
 
     /**
-     * Sets the {@link MenuItem} icon for the add to Home screen action.
+     * Themes the action bar subtitle
+     * 
+     * @param subtitle The subtitle to use
+     */
+    public void setSubtitle(final String subtitle) {
+        if (!TextUtils.isEmpty(subtitle)) {
+            final TextView actionBarSubtitle = (TextView) mActionBarLayout
+                    .findViewById(R.id.action_bar_subtitle);
+            actionBarSubtitle.setVisibility(View.VISIBLE);
+            // Theme the subtitle
+            actionBarSubtitle.setTextColor(getColor("action_bar_subtitle"));
+            // Set the subtitle
+            actionBarSubtitle.setText(subtitle);
+        }
+    }
+
+    /**
+     * Set the new theme package name.
+     * 
+     * @param packageName The package name of the theme to be set.
+     */
+    public void setThemePackageName(final String packageName) {
+        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(final Void... unused) {
+                final SharedPreferences.Editor editor = mPreferences.edit();
+                editor.putString(PACKAGE_NAME, packageName);
+                SharedPreferencesCompat.apply(editor);
+                return null;
+            }
+        }, (Void[]) null);
+    }
+
+    /**
+     * Themes the action bar subtitle
+     * 
+     * @param subtitle The subtitle to use
+     */
+    public void setTitle(final String title) {
+        if (!TextUtils.isEmpty(title)) {
+            // Get the title text view
+            final TextView actionBarTitle = (TextView) mActionBarLayout
+                    .findViewById(R.id.action_bar_title);
+            // Theme the title
+            actionBarTitle.setTextColor(getColor("action_bar_title"));
+            // Set the title
+            actionBarTitle.setText(title);
+        }
+    }
+
+    /**
+     * Used to search the Play Store for "Apollo Themes".
      * 
      * @param context The {@link Context} to use.
-     * @param search The Menu used to find the "add_to_homescreen" item.
      */
-    public void setAddToHomeScreenIcon(final Menu search) {
-        final MenuItem pinnAction = search.findItem(R.id.menu_add_to_homescreen);
-        final String pinnIconId = "ic_action_pinn_to_home";
-        setMenuItemColor(pinnAction, "pinn_to_action", pinnIconId);
+    public void shopFor(final Context context) {
+        final Intent shopIntent = new Intent(Intent.ACTION_VIEW);
+        shopIntent.setData(Uri.parse(String.format(SEARCH_URI, Uri.encode(sApolloSearch))));
+        shopIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        shopIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        context.startActivity(shopIntent);
     }
 
     /**
@@ -326,66 +388,5 @@ public class ThemeUtils {
 
         // Theme the title
         setTitle(title);
-    }
-
-    /**
-     * Themes the action bar subtitle
-     * 
-     * @param subtitle The subtitle to use
-     */
-    public void setTitle(final String title) {
-        if (!TextUtils.isEmpty(title)) {
-            // Get the title text view
-            final TextView actionBarTitle = (TextView)mActionBarLayout
-                    .findViewById(R.id.action_bar_title);
-            // Theme the title
-            actionBarTitle.setTextColor(getColor("action_bar_title"));
-            // Set the title
-            actionBarTitle.setText(title);
-        }
-    }
-
-    /**
-     * Themes the action bar subtitle
-     * 
-     * @param subtitle The subtitle to use
-     */
-    public void setSubtitle(final String subtitle) {
-        if (!TextUtils.isEmpty(subtitle)) {
-            final TextView actionBarSubtitle = (TextView)mActionBarLayout
-                    .findViewById(R.id.action_bar_subtitle);
-            actionBarSubtitle.setVisibility(View.VISIBLE);
-            // Theme the subtitle
-            actionBarSubtitle.setTextColor(getColor("action_bar_subtitle"));
-            // Set the subtitle
-            actionBarSubtitle.setText(subtitle);
-        }
-    }
-
-    /**
-     * Used to search the Play Store for "Apollo Themes".
-     * 
-     * @param context The {@link Context} to use.
-     */
-    public void shopFor(final Context context) {
-        final Intent shopIntent = new Intent(Intent.ACTION_VIEW);
-        shopIntent.setData(Uri.parse(String.format(SEARCH_URI, Uri.encode(sApolloSearch))));
-        shopIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        shopIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        context.startActivity(shopIntent);
-    }
-
-    /**
-     * Used to search the Play Store for a specific app.
-     * 
-     * @param context The {@link Context} to use.
-     * @param themeName The theme name to search for.
-     */
-    public static void openAppPage(final Context context, final String themeName) {
-        final Intent shopIntent = new Intent(Intent.ACTION_VIEW);
-        shopIntent.setData(Uri.parse(APP_URI + themeName));
-        shopIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        shopIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        context.startActivity(shopIntent);
     }
 }

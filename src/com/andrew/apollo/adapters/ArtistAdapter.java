@@ -11,15 +11,16 @@
 
 package com.andrew.apollo.adapters;
 
+import org.holoeverywhere.ArrayAdapter;
+import org.holoeverywhere.LayoutInflater;
+import org.holoeverywhere.app.Activity;
+
 import android.content.Context;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 
-import com.actionbarsherlock.app.SherlockFragmentActivity;
 import com.andrew.apollo.R;
 import com.andrew.apollo.cache.ImageFetcher;
 import com.andrew.apollo.model.Artist;
@@ -45,9 +46,9 @@ public class ArtistAdapter extends ArrayAdapter<Artist> {
     private static final int VIEW_TYPE_COUNT = 2;
 
     /**
-     * The resource Id of the layout to inflate
+     * Used to cache the artist info
      */
-    private final int mLayoutId;
+    private DataHolder[] mData;
 
     /**
      * Image cache and image fetcher
@@ -55,19 +56,19 @@ public class ArtistAdapter extends ArrayAdapter<Artist> {
     private final ImageFetcher mImageFetcher;
 
     /**
-     * Semi-transparent overlay
+     * The resource Id of the layout to inflate
      */
-    private final int mOverlay;
-
-    /**
-     * Used to cache the artist info
-     */
-    private DataHolder[] mData;
+    private final int mLayoutId;
 
     /**
      * Loads line three and the background image if the user decides to.
      */
     private boolean mLoadExtraData = false;
+
+    /**
+     * Semi-transparent overlay
+     */
+    private final int mOverlay;
 
     /**
      * Constructor of <code>ArtistAdapter</code>
@@ -80,9 +81,40 @@ public class ArtistAdapter extends ArrayAdapter<Artist> {
         // Get the layout Id
         mLayoutId = layoutId;
         // Initialize the cache & image fetcher
-        mImageFetcher = ApolloUtils.getImageFetcher((SherlockFragmentActivity)context);
+        mImageFetcher = ApolloUtils.getImageFetcher((Activity) context);
         // Cache the transparent overlay
         mOverlay = context.getResources().getColor(R.color.list_item_background);
+    }
+
+    /**
+     * Method used to cache the data used to populate the list or grid. The idea
+     * is to cache everything before {@code #getView(int, View, ViewGroup)} is
+     * called.
+     */
+    public void buildCache() {
+        mData = new DataHolder[getCount()];
+        for (int i = 0; i < getCount(); i++) {
+            // Build the artist
+            final Artist artist = getItem(i);
+
+            // Build the data holder
+            mData[i] = new DataHolder();
+            // Artist Id
+            mData[i].mItemId = artist.mArtistId;
+            // Artist names (line one)
+            mData[i].mLineOne = artist.mArtistName;
+            // Number of albums (line two)
+            mData[i].mLineTwo = artist.mAlbumNumber;
+            // Number of songs (line three)
+            mData[i].mLineThree = artist.mSongNumber;
+        }
+    }
+
+    /**
+     * Flushes the disk cache.
+     */
+    public void flush() {
+        mImageFetcher.flush();
     }
 
     /**
@@ -97,7 +129,7 @@ public class ArtistAdapter extends ArrayAdapter<Artist> {
             holder = new MusicHolder(convertView);
             convertView.setTag(holder);
         } else {
-            holder = (MusicHolder)convertView.getTag();
+            holder = (MusicHolder) convertView.getTag();
         }
 
         // Retrieve the data holder
@@ -126,40 +158,16 @@ public class ArtistAdapter extends ArrayAdapter<Artist> {
      * {@inheritDoc}
      */
     @Override
-    public boolean hasStableIds() {
-        return true;
+    public int getViewTypeCount() {
+        return VIEW_TYPE_COUNT;
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public int getViewTypeCount() {
-        return VIEW_TYPE_COUNT;
-    }
-
-    /**
-     * Method used to cache the data used to populate the list or grid. The idea
-     * is to cache everything before {@code #getView(int, View, ViewGroup)} is
-     * called.
-     */
-    public void buildCache() {
-        mData = new DataHolder[getCount()];
-        for (int i = 0; i < getCount(); i++) {
-            // Build the artist
-            final Artist artist = getItem(i);
-
-            // Build the data holder
-            mData[i] = new DataHolder();
-            // Artist Id
-            mData[i].mItemId = artist.mArtistId;
-            // Artist names (line one)
-            mData[i].mLineOne = artist.mArtistName;
-            // Number of albums (line two)
-            mData[i].mLineTwo = artist.mAlbumNumber;
-            // Number of songs (line three)
-            mData[i].mLineThree = artist.mSongNumber;
-        }
+    public boolean hasStableIds() {
+        return true;
     }
 
     /**
@@ -185,11 +193,20 @@ public class ArtistAdapter extends ArrayAdapter<Artist> {
     }
 
     /**
-     * Method that unloads and clears the items in the adapter
+     * @param artist The key used to find the cached artist to remove
      */
-    public void unload() {
-        clear();
-        mData = null;
+    public void removeFromCache(final Artist artist) {
+        if (mImageFetcher != null) {
+            mImageFetcher.removeFromCache(artist.mArtistName);
+        }
+    }
+
+    /**
+     * @param extra True to load line three and the background image, false
+     *            otherwise.
+     */
+    public void setLoadExtraData(final boolean extra) {
+        mLoadExtraData = extra;
     }
 
     /**
@@ -202,26 +219,10 @@ public class ArtistAdapter extends ArrayAdapter<Artist> {
     }
 
     /**
-     * @param artist The key used to find the cached artist to remove
+     * Method that unloads and clears the items in the adapter
      */
-    public void removeFromCache(final Artist artist) {
-        if (mImageFetcher != null) {
-            mImageFetcher.removeFromCache(artist.mArtistName);
-        }
-    }
-
-    /**
-     * Flushes the disk cache.
-     */
-    public void flush() {
-        mImageFetcher.flush();
-    }
-
-    /**
-     * @param extra True to load line three and the background image, false
-     *            otherwise.
-     */
-    public void setLoadExtraData(final boolean extra) {
-        mLoadExtraData = extra;
+    public void unload() {
+        clear();
+        mData = null;
     }
 }

@@ -21,13 +21,13 @@
 
 package com.andrew.apollo.lastfm;
 
-import android.content.Context;
-
-import com.andrew.apollo.Config;
-
 import java.util.Locale;
 import java.util.Map;
 import java.util.WeakHashMap;
+
+import android.content.Context;
+
+import com.andrew.apollo.Config;
 
 /**
  * Bean that contains artist information.<br/>
@@ -39,45 +39,23 @@ import java.util.WeakHashMap;
  */
 public class Artist extends MusicEntry {
 
-    protected final static ItemFactory<Artist> FACTORY = new ArtistFactory();
+    private final static class ArtistFactory implements ItemFactory<Artist> {
 
-    protected Artist(final String name, final String url) {
-        super(name, url);
-    }
-
-    /**
-     * Retrieves detailed artist info for the given artist or mbid entry.
-     * 
-     * @param artistOrMbid Name of the artist or an mbid
-     * @param apiKey The API key
-     * @return detailed artist info
-     */
-    public final static Artist getInfo(final Context context, final String artistOrMbid,
-            final String apiKey) {
-        return getInfo(context, artistOrMbid, Locale.getDefault(), apiKey);
-    }
-
-    /**
-     * Retrieves detailed artist info for the given artist or mbid entry.
-     * 
-     * @param artistOrMbid Name of the artist or an mbid
-     * @param locale The language to fetch info in, or <code>null</code>
-     * @param username The username for the context of the request, or
-     *            <code>null</code>. If supplied, the user's playcount for this
-     *            artist is included in the response
-     * @param apiKey The API key
-     * @return detailed artist info
-     */
-    public final static Artist getInfo(final Context context, final String artistOrMbid,
-            final Locale locale, final String apiKey) {
-        final Map<String, String> mParams = new WeakHashMap<String, String>();
-        mParams.put("artist", artistOrMbid);
-        if (locale != null && locale.getLanguage().length() != 0) {
-            mParams.put("lang", locale.getLanguage());
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public Artist createItemFromElement(final DomElement element) {
+            if (element == null) {
+                return null;
+            }
+            final Artist artist = new Artist(null, null);
+            MusicEntry.loadStandardInfo(artist, element);
+            return artist;
         }
-        final Result mResult = Caller.getInstance(context).call("artist.getInfo", apiKey, mParams);
-        return ResponseBuilder.buildItem(mResult, Artist.class);
     }
+
+    protected final static ItemFactory<Artist> FACTORY = new ArtistFactory();
 
     /**
      * Use the last.fm corrections data to check whether the supplied artist has
@@ -142,19 +120,41 @@ public class Artist extends MusicEntry {
         return ResponseBuilder.buildPaginatedResult(result, Image.class);
     }
 
-    private final static class ArtistFactory implements ItemFactory<Artist> {
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public Artist createItemFromElement(final DomElement element) {
-            if (element == null) {
-                return null;
-            }
-            final Artist artist = new Artist(null, null);
-            MusicEntry.loadStandardInfo(artist, element);
-            return artist;
+    /**
+     * Retrieves detailed artist info for the given artist or mbid entry.
+     * 
+     * @param artistOrMbid Name of the artist or an mbid
+     * @param locale The language to fetch info in, or <code>null</code>
+     * @param username The username for the context of the request, or
+     *            <code>null</code>. If supplied, the user's playcount for this
+     *            artist is included in the response
+     * @param apiKey The API key
+     * @return detailed artist info
+     */
+    public final static Artist getInfo(final Context context, final String artistOrMbid,
+            final Locale locale, final String apiKey) {
+        final Map<String, String> mParams = new WeakHashMap<String, String>();
+        mParams.put("artist", artistOrMbid);
+        if (locale != null && locale.getLanguage().length() != 0) {
+            mParams.put("lang", locale.getLanguage());
         }
+        final Result mResult = Caller.getInstance(context).call("artist.getInfo", apiKey, mParams);
+        return ResponseBuilder.buildItem(mResult, Artist.class);
+    }
+
+    /**
+     * Retrieves detailed artist info for the given artist or mbid entry.
+     * 
+     * @param artistOrMbid Name of the artist or an mbid
+     * @param apiKey The API key
+     * @return detailed artist info
+     */
+    public final static Artist getInfo(final Context context, final String artistOrMbid,
+            final String apiKey) {
+        return getInfo(context, artistOrMbid, Locale.getDefault(), apiKey);
+    }
+
+    protected Artist(final String name, final String url) {
+        super(name, url);
     }
 }

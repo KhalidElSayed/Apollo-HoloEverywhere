@@ -41,15 +41,6 @@ public class CompatActionBarNavHandler implements TabListener, OnNavigationListe
     }
 
     /**
-     * Called by framework when a tab is selected. This will cause a navigation
-     * event to be delivered to the configured listener.
-     */
-    @Override
-    public void onTabSelected(final Tab tab, final FragmentTransaction ft) {
-        mNavListener.onCategorySelected(tab.getPosition());
-    }
-
-    /**
      * Called by framework when a item on the navigation menu is selected. This
      * will cause a navigation event to be delivered to the configured listener.
      */
@@ -66,6 +57,15 @@ public class CompatActionBarNavHandler implements TabListener, OnNavigationListe
     @Override
     public void onTabReselected(final Tab tab, final FragmentTransaction ft) {
         /* Nothing to do */
+    }
+
+    /**
+     * Called by framework when a tab is selected. This will cause a navigation
+     * event to be delivered to the configured listener.
+     */
+    @Override
+    public void onTabSelected(final Tab tab, final FragmentTransaction ft) {
+        mNavListener.onCategorySelected(tab.getPosition());
     }
 
     /**

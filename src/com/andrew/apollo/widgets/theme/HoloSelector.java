@@ -11,6 +11,8 @@
 
 package com.andrew.apollo.widgets.theme;
 
+import java.lang.ref.WeakReference;
+
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Color;
@@ -20,19 +22,12 @@ import android.graphics.drawable.StateListDrawable;
 import com.andrew.apollo.utils.ApolloUtils;
 import com.andrew.apollo.utils.ThemeUtils;
 
-import java.lang.ref.WeakReference;
-
 /**
  * A themeable {@link StateListDrawable}.
  * 
  * @author Andrew Neal (andrewdneal@gmail.com)
  */
 public class HoloSelector extends StateListDrawable {
-
-    /**
-     * Used to theme the touched and focused colors
-     */
-    private static final String RESOURCE_NAME = "holo_selector";
 
     /**
      * Focused state
@@ -45,6 +40,19 @@ public class HoloSelector extends StateListDrawable {
     private static final int PRESSED = android.R.attr.state_pressed;
 
     /**
+     * Used to theme the touched and focused colors
+     */
+    private static final String RESOURCE_NAME = "holo_selector";
+
+    /**
+     * @param color The color to use.
+     * @return A new {@link ColorDrawable}.
+     */
+    private static final ColorDrawable makeColorDrawable(final int color) {
+        return new WeakReference<ColorDrawable>(new ColorDrawable(color)).get();
+    }
+
+    /**
      * Constructor for <code>HoloSelector</code>
      * 
      * @param context The {@link Context} to use.
@@ -55,24 +63,16 @@ public class HoloSelector extends StateListDrawable {
         final int themeColor = resources.getColor(RESOURCE_NAME);
         // Focused
         addState(new int[] {
-            FOCUSED
+                FOCUSED
         }, makeColorDrawable(themeColor));
         // Pressed
         addState(new int[] {
-            PRESSED
+                PRESSED
         }, makeColorDrawable(themeColor));
         // Default
         addState(new int[] {}, makeColorDrawable(Color.TRANSPARENT));
         if (ApolloUtils.hasHoneycomb()) {
             setExitFadeDuration(400);
         }
-    }
-
-    /**
-     * @param color The color to use.
-     * @return A new {@link ColorDrawable}.
-     */
-    private static final ColorDrawable makeColorDrawable(final int color) {
-        return new WeakReference<ColorDrawable>(new ColorDrawable(color)).get();
     }
 }

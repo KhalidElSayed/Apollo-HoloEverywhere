@@ -44,18 +44,6 @@ public class Playlist {
      * {@inheritDoc}
      */
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (mPlaylistId == null ? 0 : mPlaylistId.hashCode());
-        result = prime * result + (mPlaylistName == null ? 0 : mPlaylistName.hashCode());
-        return result;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public boolean equals(final Object obj) {
         if (this == obj) {
             return true;
@@ -66,7 +54,7 @@ public class Playlist {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final Playlist other = (Playlist)obj;
+        final Playlist other = (Playlist) obj;
         if (mPlaylistId == null) {
             if (other.mPlaylistId != null) {
                 return false;
@@ -82,6 +70,18 @@ public class Playlist {
             return false;
         }
         return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + (mPlaylistId == null ? 0 : mPlaylistId.hashCode());
+        result = prime * result + (mPlaylistName == null ? 0 : mPlaylistName.hashCode());
+        return result;
     }
 
     /**

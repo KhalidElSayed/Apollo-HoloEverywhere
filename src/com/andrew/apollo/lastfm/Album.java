@@ -21,12 +21,12 @@
 
 package com.andrew.apollo.lastfm;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import android.content.Context;
 
 import com.andrew.apollo.Config;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Wrapper class for Album related API calls and Album Bean.
@@ -35,19 +35,29 @@ import java.util.Map;
  */
 public class Album extends MusicEntry {
 
-    protected final static ItemFactory<Album> FACTORY = new AlbumFactory();
+    private final static class AlbumFactory implements ItemFactory<Album> {
 
-    private String artist;
-
-    /**
-     * @param name
-     * @param url
-     * @param artist
-     */
-    private Album(final String name, final String url, final String artist) {
-        super(name, url);
-        this.artist = artist;
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public Album createItemFromElement(final DomElement element) {
+            if (element == null) {
+                return null;
+            }
+            final Album album = new Album(null, null, null);
+            MusicEntry.loadStandardInfo(album, element);
+            if (element.hasChild("artist")) {
+                album.artist = element.getChild("artist").getChildText("name");
+                if (album.artist == null) {
+                    album.artist = element.getChildText("artist");
+                }
+            }
+            return album;
+        }
     }
+
+    protected final static ItemFactory<Album> FACTORY = new AlbumFactory();
 
     /**
      * Get the metadata for an album on Last.fm using the album name or a
@@ -84,25 +94,15 @@ public class Album extends MusicEntry {
         return ResponseBuilder.buildItem(result, Album.class);
     }
 
-    private final static class AlbumFactory implements ItemFactory<Album> {
+    private String artist;
 
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public Album createItemFromElement(final DomElement element) {
-            if (element == null) {
-                return null;
-            }
-            final Album album = new Album(null, null, null);
-            MusicEntry.loadStandardInfo(album, element);
-            if (element.hasChild("artist")) {
-                album.artist = element.getChild("artist").getChildText("name");
-                if (album.artist == null) {
-                    album.artist = element.getChildText("artist");
-                }
-            }
-            return album;
-        }
+    /**
+     * @param name
+     * @param url
+     * @param artist
+     */
+    private Album(final String name, final String url, final String artist) {
+        super(name, url);
+        this.artist = artist;
     }
 }

@@ -11,10 +11,10 @@
 
 package com.andrew.apollo;
 
+import java.lang.reflect.Method;
+
 import android.media.AudioManager;
 import android.util.Log;
-
-import java.lang.reflect.Method;
 
 /**
  * Contains methods to handle registering/unregistering remote control clients.
@@ -22,16 +22,16 @@ import java.lang.reflect.Method;
  * no-ops.
  */
 @SuppressWarnings({
-    "rawtypes"
+        "rawtypes"
 })
 public class RemoteControlHelper {
-    private static final String TAG = "RemoteControlHelper";
-
     private static boolean sHasRemoteControlAPIs = false;
 
     private static Method sRegisterRemoteControlClientMethod;
 
     private static Method sUnregisterRemoteControlClientMethod;
+
+    private static final String TAG = "RemoteControlHelper";
 
     static {
         try {

@@ -11,6 +11,9 @@
 
 package com.andrew.apollo.loaders;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import android.content.Context;
 import android.database.Cursor;
 import android.provider.BaseColumns;
@@ -23,9 +26,6 @@ import com.andrew.apollo.utils.Lists;
 import com.andrew.apollo.utils.MusicUtils;
 import com.andrew.apollo.utils.PreferenceUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Used to query {@link MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI} and return
  * the albums on a user's device.
@@ -33,6 +33,28 @@ import java.util.List;
  * @author Andrew Neal (andrewdneal@gmail.com)
  */
 public class AlbumLoader extends WrappedAsyncTaskLoader<List<Album>> {
+
+    /**
+     * Creates the {@link Cursor} used to run the query.
+     * 
+     * @param context The {@link Context} to use.
+     * @return The {@link Cursor} used to run the album query.
+     */
+    public static final Cursor makeAlbumCursor(final Context context) {
+        return context.getContentResolver().query(MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
+                new String[] {
+                        /* 0 */
+                        BaseColumns._ID,
+                        /* 1 */
+                        AlbumColumns.ALBUM,
+                        /* 2 */
+                        AlbumColumns.ARTIST,
+                        /* 3 */
+                        AlbumColumns.NUMBER_OF_SONGS,
+                        /* 4 */
+                        AlbumColumns.FIRST_YEAR
+                }, null, null, PreferenceUtils.getInstace(context).getAlbumSortOrder());
+    }
 
     /**
      * The result
@@ -95,27 +117,5 @@ public class AlbumLoader extends WrappedAsyncTaskLoader<List<Album>> {
             mCursor = null;
         }
         return mAlbumsList;
-    }
-
-    /**
-     * Creates the {@link Cursor} used to run the query.
-     * 
-     * @param context The {@link Context} to use.
-     * @return The {@link Cursor} used to run the album query.
-     */
-    public static final Cursor makeAlbumCursor(final Context context) {
-        return context.getContentResolver().query(MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
-                new String[] {
-                        /* 0 */
-                        BaseColumns._ID,
-                        /* 1 */
-                        AlbumColumns.ALBUM,
-                        /* 2 */
-                        AlbumColumns.ARTIST,
-                        /* 3 */
-                        AlbumColumns.NUMBER_OF_SONGS,
-                        /* 4 */
-                        AlbumColumns.FIRST_YEAR
-                }, null, null, PreferenceUtils.getInstace(context).getAlbumSortOrder());
     }
 }

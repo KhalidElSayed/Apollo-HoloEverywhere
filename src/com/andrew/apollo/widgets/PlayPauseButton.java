@@ -33,14 +33,14 @@ import com.andrew.apollo.widgets.theme.HoloSelector;
 public class PlayPauseButton extends ImageButton implements OnClickListener, OnLongClickListener {
 
     /**
-     * Play button theme resource
-     */
-    private static final String PLAY = "btn_playback_play";
-
-    /**
      * Pause button theme resource
      */
     private static final String PAUSE = "btn_playback_pause";
+
+    /**
+     * Play button theme resource
+     */
+    private static final String PLAY = "btn_playback_play";
 
     /**
      * The resources to use.

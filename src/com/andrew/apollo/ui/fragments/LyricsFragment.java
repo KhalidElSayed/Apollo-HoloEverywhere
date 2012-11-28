@@ -11,18 +11,18 @@
 
 package com.andrew.apollo.ui.fragments;
 
+import org.holoeverywhere.LayoutInflater;
+import org.holoeverywhere.app.Fragment;
+import org.holoeverywhere.widget.ProgressBar;
+import org.holoeverywhere.widget.TextView;
+
 import android.annotation.SuppressLint;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 import android.text.TextUtils;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 
-import com.actionbarsherlock.app.SherlockFragment;
 import com.andrew.apollo.R;
 import com.andrew.apollo.lyrics.LyricsProvider;
 import com.andrew.apollo.lyrics.LyricsProviderFactory;
@@ -37,76 +37,7 @@ import com.andrew.apollo.utils.MusicUtils;
  * @author Andrew Neal (andrewdneal@gmail.com)
  */
 @SuppressLint("NewApi")
-public class LyricsFragment extends SherlockFragment {
-
-    // Lyrics
-    private TextView mLyrics;
-
-    // Progess
-    private ProgressBar mProgressBar;
-
-    private boolean mTryOnline = false;
-
-    /**
-     * Empty constructor as per the {@link Fragment} documentation
-     */
-    public LyricsFragment() {
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public View onCreateView(final LayoutInflater inflater, final ViewGroup container,
-            final Bundle savedInstanceState) {
-        // The View for the fragment's UI
-        final ViewGroup rootView = (ViewGroup)inflater.inflate(R.layout.lyrics_base, null);
-        // Initialize the lyrics text view
-        mLyrics = (TextView)rootView.findViewById(R.id.audio_player_lyrics);
-        // Enable text selection
-        if (ApolloUtils.hasHoneycomb()) {
-            mLyrics.setTextIsSelectable(true);
-        }
-        // Initialze the progess bar
-        mProgressBar = (ProgressBar)rootView.findViewById(R.id.audio_player_lyrics_progess);
-        return rootView;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onActivityCreated(final Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
-        // Enable the options menu
-        setHasOptionsMenu(true);
-    }
-
-    /**
-     * Called to set the lyrics.
-     */
-    public void fetchLyrics(final boolean force) {
-        if (isAdded()) {
-            ApolloUtils.execute(false, new FetchLyrics(), force);
-        }
-    }
-
-    /**
-     * Save current lyrics in file metadata for offline use
-     */
-    private void saveLyrics(final String lyrics) {
-        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
-
-            @Override
-            protected Void doInBackground(final Void... unused) {
-                final String path = MusicUtils.getFilePath();
-                if (path != null) {
-                    OfflineLyricsProvider.saveLyrics(lyrics, path);
-                }
-                return null;
-            }
-        }, (Void[])null);
-    }
+public class LyricsFragment extends Fragment {
 
     /**
      * Used to fetch the lyrics for the currently playing song.
@@ -129,17 +60,6 @@ public class LyricsFragment extends SherlockFragment {
          * {@inheritDoc}
          */
         @Override
-        protected void onPreExecute() {
-            mTryOnline = false;
-            // Release the lyrics on track changes
-            mLyrics.setText(null);
-            mProgressBar.setVisibility(View.VISIBLE);
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
         protected String doInBackground(final Boolean... force) {
             LyricsProvider provider = null;
             String lyrics = null;
@@ -151,7 +71,7 @@ public class LyricsFragment extends SherlockFragment {
             }
 
             // Now try to fetch for them
-            if (lyrics == null && ApolloUtils.isOnline(getSherlockActivity())) {
+            if (lyrics == null && ApolloUtils.isOnline(getSupportActivity())) {
                 mTryOnline = true;
                 provider = LyricsProviderFactory.getMainOnlineProvider();
                 lyrics = provider.getLyrics(mArtist, mSong);
@@ -178,5 +98,85 @@ public class LyricsFragment extends SherlockFragment {
             }
             mProgressBar.setVisibility(View.GONE);
         }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        protected void onPreExecute() {
+            mTryOnline = false;
+            // Release the lyrics on track changes
+            mLyrics.setText(null);
+            mProgressBar.setVisibility(View.VISIBLE);
+        }
+    }
+
+    // Lyrics
+    private TextView mLyrics;
+
+    // Progess
+    private ProgressBar mProgressBar;
+
+    private boolean mTryOnline = false;
+
+    /**
+     * Empty constructor as per the {@link Fragment} documentation
+     */
+    public LyricsFragment() {
+    }
+
+    /**
+     * Called to set the lyrics.
+     */
+    public void fetchLyrics(final boolean force) {
+        if (isAdded()) {
+            ApolloUtils.execute(false, new FetchLyrics(), force);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onActivityCreated(final Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+        // Enable the options menu
+        setHasOptionsMenu(true);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public View onCreateView(final LayoutInflater inflater, final ViewGroup container,
+            final Bundle savedInstanceState) {
+        // The View for the fragment's UI
+        final ViewGroup rootView = (ViewGroup) inflater.inflate(R.layout.lyrics_base, null);
+        // Initialize the lyrics text view
+        mLyrics = (TextView) rootView.findViewById(R.id.audio_player_lyrics);
+        // Enable text selection
+        if (ApolloUtils.hasHoneycomb()) {
+            mLyrics.setTextIsSelectable(true);
+        }
+        // Initialze the progess bar
+        mProgressBar = (ProgressBar) rootView.findViewById(R.id.audio_player_lyrics_progess);
+        return rootView;
+    }
+
+    /**
+     * Save current lyrics in file metadata for offline use
+     */
+    private void saveLyrics(final String lyrics) {
+        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
+
+            @Override
+            protected Void doInBackground(final Void... unused) {
+                final String path = MusicUtils.getFilePath();
+                if (path != null) {
+                    OfflineLyricsProvider.saveLyrics(lyrics, path);
+                }
+                return null;
+            }
+        }, (Void[]) null);
     }
 }

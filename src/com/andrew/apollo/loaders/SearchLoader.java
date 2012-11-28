@@ -11,18 +11,20 @@
 
 package com.andrew.apollo.loaders;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.BaseColumns;
-import android.provider.MediaStore;
+import android.provider.MediaStore.Audio.AlbumColumns;
+import android.provider.MediaStore.Audio.ArtistColumns;
+import android.provider.MediaStore.MediaColumns;
 import android.text.TextUtils;
 
 import com.andrew.apollo.model.Song;
 import com.andrew.apollo.utils.Lists;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * @author Andrew Neal (andrewdneal@gmail.com)
@@ -30,14 +32,30 @@ import java.util.List;
 public class SearchLoader extends WrappedAsyncTaskLoader<List<Song>> {
 
     /**
-     * The result
+     * * @param context The {@link Context} to use.
+     * 
+     * @param query The user's query.
+     * @return The {@link Cursor} used to perform the search.
      */
-    private final ArrayList<Song> mSongList = Lists.newArrayList();
+    public static final Cursor makeSearchCursor(final Context context, final String query) {
+        return context.getContentResolver().query(
+                Uri.parse("content://media/external/audio/search/fancy/" + Uri.encode(query)),
+                new String[] {
+                        BaseColumns._ID, MediaColumns.MIME_TYPE,
+                        ArtistColumns.ARTIST, AlbumColumns.ALBUM,
+                        MediaColumns.TITLE, "data1", "data2" //$NON-NLS-2$ 
+                }, null, null, null);
+    }
 
     /**
      * The {@link Cursor} used to run the query.
      */
     private Cursor mCursor;
+
+    /**
+     * The result
+     */
+    private final ArrayList<Song> mSongList = Lists.newArrayList();
 
     /**
      * Constructor of <code>SongLoader</code>
@@ -64,32 +82,32 @@ public class SearchLoader extends WrappedAsyncTaskLoader<List<Song>> {
 
                 // Copy the song name
                 final String songName = mCursor.getString(mCursor
-                        .getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE));
+                        .getColumnIndexOrThrow(MediaColumns.TITLE));
 
                 // Check for a song Id
                 if (!TextUtils.isEmpty(songName)) {
                     id = mCursor.getString(mCursor
-                            .getColumnIndexOrThrow(MediaStore.Audio.Media._ID));
+                            .getColumnIndexOrThrow(BaseColumns._ID));
                 }
 
                 // Copy the album name
                 final String album = mCursor.getString(mCursor
-                        .getColumnIndexOrThrow(MediaStore.Audio.Albums.ALBUM));
+                        .getColumnIndexOrThrow(AlbumColumns.ALBUM));
 
                 // Check for a album Id
                 if (TextUtils.isEmpty(id) && !TextUtils.isEmpty(album)) {
                     id = mCursor.getString(mCursor
-                            .getColumnIndexOrThrow(MediaStore.Audio.Albums._ID));
+                            .getColumnIndexOrThrow(BaseColumns._ID));
                 }
 
                 // Copy the artist name
                 final String artist = mCursor.getString(mCursor
-                        .getColumnIndexOrThrow(MediaStore.Audio.Artists.ARTIST));
+                        .getColumnIndexOrThrow(ArtistColumns.ARTIST));
 
                 // Check for a artist Id
                 if (TextUtils.isEmpty(id) && !TextUtils.isEmpty(artist)) {
                     id = mCursor.getString(mCursor
-                            .getColumnIndexOrThrow(MediaStore.Audio.Artists._ID));
+                            .getColumnIndexOrThrow(BaseColumns._ID));
                 }
 
                 // Create a new song
@@ -105,22 +123,6 @@ public class SearchLoader extends WrappedAsyncTaskLoader<List<Song>> {
             mCursor = null;
         }
         return mSongList;
-    }
-
-    /**
-     * * @param context The {@link Context} to use.
-     * 
-     * @param query The user's query.
-     * @return The {@link Cursor} used to perform the search.
-     */
-    public static final Cursor makeSearchCursor(final Context context, final String query) {
-        return context.getContentResolver().query(
-                Uri.parse("content://media/external/audio/search/fancy/" + Uri.encode(query)),
-                new String[] {
-                        BaseColumns._ID, MediaStore.Audio.Media.MIME_TYPE,
-                        MediaStore.Audio.Artists.ARTIST, MediaStore.Audio.Albums.ALBUM,
-                        MediaStore.Audio.Media.TITLE, "data1", "data2" //$NON-NLS-2$ 
-                }, null, null, null);
     }
 
 }

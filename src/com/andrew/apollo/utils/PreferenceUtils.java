@@ -33,55 +33,66 @@ import com.andrew.apollo.ui.fragments.profile.ArtistSongFragment;
  */
 public final class PreferenceUtils {
 
-    /* Default start page (Artist page) */
-    public static final int DEFFAULT_PAGE = 2;
-
-    /* Saves the last page the pager was on in {@link MusicBrowserPhoneFragment} */
-    public static final String START_PAGE = "start_page";
-
-    // Sort order for the artist list
-    public static final String ARTIST_SORT_ORDER = "artist_sort_order";
-
-    // Sort order for the artist song list
-    public static final String ARTIST_SONG_SORT_ORDER = "artist_song_sort_order";
-
-    // Sort order for the artist album list
-    public static final String ARTIST_ALBUM_SORT_ORDER = "artist_album_sort_order";
-
-    // Sort order for the album list
-    public static final String ALBUM_SORT_ORDER = "album_sort_order";
+    // Sets the type of layout to use for the album list
+    public static final String ALBUM_LAYOUT = "album_layout";
 
     // Sort order for the album song list
     public static final String ALBUM_SONG_SORT_ORDER = "album_song_sort_order";
 
-    // Sort order for the song list
-    public static final String SONG_SORT_ORDER = "song_sort_order";
+    // Sort order for the album list
+    public static final String ALBUM_SORT_ORDER = "album_sort_order";
+
+    // Sort order for the artist album list
+    public static final String ARTIST_ALBUM_SORT_ORDER = "artist_album_sort_order";
 
     // Sets the type of layout to use for the artist list
     public static final String ARTIST_LAYOUT = "artist_layout";
 
-    // Sets the type of layout to use for the album list
-    public static final String ALBUM_LAYOUT = "album_layout";
+    // Sort order for the artist song list
+    public static final String ARTIST_SONG_SORT_ORDER = "artist_song_sort_order";
 
-    // Sets the type of layout to use for the recent list
-    public static final String RECENT_LAYOUT = "recent_layout";
-
-    // Key used to download images only on Wi-Fi
-    public static final String ONLY_ON_WIFI = "only_on_wifi";
-
-    // Key that gives permissions to download missing album covers
-    public static final String DOWNLOAD_MISSING_ARTWORK = "download_missing_artwork";
-
-    // Key that gives permissions to download missing artist images
-    public static final String DOWNLOAD_MISSING_ARTIST_IMAGES = "download_missing_artist_images";
-
-    // Enables lock screen controls on Honeycomb and above
-    public static final String USE_LOCKSREEN_CONTROLS = "use_lockscreen_controls";
+    // Sort order for the artist list
+    public static final String ARTIST_SORT_ORDER = "artist_sort_order";
 
     // Key used to set the overall theme color
     public static final String DEFAULT_THEME_COLOR = "default_theme_color";
 
+    /* Default start page (Artist page) */
+    public static final int DEFFAULT_PAGE = 2;
+
+    // Key that gives permissions to download missing artist images
+    public static final String DOWNLOAD_MISSING_ARTIST_IMAGES = "download_missing_artist_images";
+
+    // Key that gives permissions to download missing album covers
+    public static final String DOWNLOAD_MISSING_ARTWORK = "download_missing_artwork";
+
+    // Key used to download images only on Wi-Fi
+    public static final String ONLY_ON_WIFI = "only_on_wifi";
+
+    // Sets the type of layout to use for the recent list
+    public static final String RECENT_LAYOUT = "recent_layout";
+
     private static PreferenceUtils sInstance;
+
+    // Sort order for the song list
+    public static final String SONG_SORT_ORDER = "song_sort_order";
+
+    /* Saves the last page the pager was on in {@link MusicBrowserPhoneFragment} */
+    public static final String START_PAGE = "start_page";
+
+    // Enables lock screen controls on Honeycomb and above
+    public static final String USE_LOCKSREEN_CONTROLS = "use_lockscreen_controls";
+
+    /**
+     * @param context The {@link Context} to use.
+     * @return A singelton of this class
+     */
+    public static final PreferenceUtils getInstace(final Context context) {
+        if (sInstance == null) {
+            sInstance = new PreferenceUtils(context.getApplicationContext());
+        }
+        return sInstance;
+    }
 
     private final SharedPreferences mPreferences;
 
@@ -95,60 +106,68 @@ public final class PreferenceUtils {
     }
 
     /**
-     * @param context The {@link Context} to use.
-     * @return A singelton of this class
+     * @return True if the user has checked to download missing artist images,
+     *         false otherwise.
      */
-    public static final PreferenceUtils getInstace(final Context context) {
-        if (sInstance == null) {
-            sInstance = new PreferenceUtils(context.getApplicationContext());
-        }
-        return sInstance;
+    public final boolean downloadMissingArtistImages() {
+        return mPreferences.getBoolean(DOWNLOAD_MISSING_ARTIST_IMAGES, true);
     }
 
     /**
-     * Saves the current page the user is on when they close the app.
-     * 
-     * @param value The last page the pager was on when the onDestroy is called
-     *            in {@link MusicBrowserPhoneFragment}.
+     * @return True if the user has checked to download missing album covers,
+     *         false otherwise.
      */
-    public void setStartPage(final int value) {
-        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(final Void... unused) {
-                final SharedPreferences.Editor editor = mPreferences.edit();
-                editor.putInt(START_PAGE, value);
-                SharedPreferencesCompat.apply(editor);
-
-                return null;
-            }
-        }, (Void[])null);
+    public final boolean downloadMissingArtwork() {
+        return mPreferences.getBoolean(DOWNLOAD_MISSING_ARTWORK, true);
     }
 
     /**
-     * Returns the last page the user was on when the app was exited.
-     * 
-     * @return The page to start on when the app is opened.
+     * @return True if the user has checked to use lockscreen controls, false
+     *         otherwise.
      */
-    public final int getStartPage() {
-        return mPreferences.getInt(START_PAGE, DEFFAULT_PAGE);
+    public final boolean enableLockscreenControls() {
+        return mPreferences.getBoolean(USE_LOCKSREEN_CONTROLS, true);
     }
 
     /**
-     * Sets the new theme color.
-     * 
-     * @param value The new theme color to use.
+     * @return The sort order used for the album song in
+     *         {@link AlbumSongFragment}
      */
-    public void setDefaultThemeColor(final int value) {
-        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(final Void... unused) {
-                final SharedPreferences.Editor editor = mPreferences.edit();
-                editor.putInt(DEFAULT_THEME_COLOR, value);
-                SharedPreferencesCompat.apply(editor);
+    public final String getAlbumSongSortOrder() {
+        return mPreferences.getString(ALBUM_SONG_SORT_ORDER,
+                SortOrder.AlbumSongSortOrder.SONG_TRACK_LIST);
+    }
 
-                return null;
-            }
-        }, (Void[])null);
+    /**
+     * @return The sort order used for the album list in {@link AlbumFragment}
+     */
+    public final String getAlbumSortOrder() {
+        return mPreferences.getString(ALBUM_SORT_ORDER, SortOrder.AlbumSortOrder.ALBUM_A_Z);
+    }
+
+    /**
+     * @return The sort order used for the artist album list in
+     *         {@link ArtistAlbumFragment}
+     */
+    public final String getArtistAlbumSortOrder() {
+        return mPreferences.getString(ARTIST_ALBUM_SORT_ORDER,
+                SortOrder.ArtistAlbumSortOrder.ALBUM_A_Z);
+    }
+
+    /**
+     * @return The sort order used for the artist song list in
+     *         {@link ArtistSongFragment}
+     */
+    public final String getArtistSongSortOrder() {
+        return mPreferences.getString(ARTIST_SONG_SORT_ORDER,
+                SortOrder.ArtistSongSortOrder.SONG_A_Z);
+    }
+
+    /**
+     * @return The sort order used for the artist list in {@link ArtistFragment}
+     */
+    public final String getArtistSortOrder() {
+        return mPreferences.getString(ARTIST_SORT_ORDER, SortOrder.ArtistSortOrder.ARTIST_A_Z);
     }
 
     /**
@@ -163,222 +182,6 @@ public final class PreferenceUtils {
     }
 
     /**
-     * @return True if the user has checked to only download images on Wi-Fi,
-     *         false otherwise
-     */
-    public final boolean onlyOnWifi() {
-        return mPreferences.getBoolean(ONLY_ON_WIFI, true);
-    }
-
-    /**
-     * @param value True if the user only wants to download images on Wi-Fi,
-     *            false otherwise
-     */
-    public void setOnlyOnWifi(final boolean value) {
-        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(final Void... unused) {
-                final SharedPreferences.Editor editor = mPreferences.edit();
-                editor.putBoolean(ONLY_ON_WIFI, value);
-                SharedPreferencesCompat.apply(editor);
-
-                return null;
-            }
-        }, (Void[])null);
-    }
-
-    /**
-     * @return True if the user has checked to download missing album covers,
-     *         false otherwise.
-     */
-    public final boolean downloadMissingArtwork() {
-        return mPreferences.getBoolean(DOWNLOAD_MISSING_ARTWORK, true);
-    }
-
-    /**
-     * @param context The {@link Context} to use
-     * @param value True if the user only wants to download missing album
-     *            covers, false otherwise.
-     */
-    public void setDownloadMissingArtwork(final boolean value) {
-        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(final Void... unused) {
-                final SharedPreferences.Editor editor = mPreferences.edit();
-                editor.putBoolean(DOWNLOAD_MISSING_ARTWORK, value);
-                SharedPreferencesCompat.apply(editor);
-
-                return null;
-            }
-        }, (Void[])null);
-    }
-
-    /**
-     * @return True if the user has checked to download missing artist images,
-     *         false otherwise.
-     */
-    public final boolean downloadMissingArtistImages() {
-        return mPreferences.getBoolean(DOWNLOAD_MISSING_ARTIST_IMAGES, true);
-    }
-
-    /**
-     * @param context The {@link Context} to use
-     * @param value True if the user only wants to download missing artist
-     *            images , false otherwise.
-     */
-    public void setDownloadMissingArtistImages(final boolean value) {
-        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(final Void... unused) {
-                final SharedPreferences.Editor editor = mPreferences.edit();
-                editor.putBoolean(DOWNLOAD_MISSING_ARTIST_IMAGES, value);
-                SharedPreferencesCompat.apply(editor);
-
-                return null;
-            }
-        }, (Void[])null);
-    }
-
-    /**
-     * @return True if the user has checked to use lockscreen controls, false
-     *         otherwise.
-     */
-    public final boolean enableLockscreenControls() {
-        return mPreferences.getBoolean(USE_LOCKSREEN_CONTROLS, true);
-    }
-
-    /**
-     * @param value True if the user has checked to use lockscreen controls,
-     *            false otherwise.
-     */
-    public void setLockscreenControls(final boolean value) {
-        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(final Void... unused) {
-                final SharedPreferences.Editor editor = mPreferences.edit();
-                editor.putBoolean(USE_LOCKSREEN_CONTROLS, value);
-                SharedPreferencesCompat.apply(editor);
-
-                return null;
-            }
-        }, (Void[])null);
-    }
-
-    /**
-     * Saves the sort order for a list.
-     * 
-     * @param key Which sort order to change
-     * @param value The new sort order
-     */
-    private void setSortOrder(final String key, final String value) {
-        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(final Void... unused) {
-                final SharedPreferences.Editor editor = mPreferences.edit();
-                editor.putString(key, value);
-                SharedPreferencesCompat.apply(editor);
-
-                return null;
-            }
-        }, (Void[])null);
-    }
-
-    /**
-     * Sets the sort order for the artist list.
-     * 
-     * @param value The new sort order
-     */
-    public void setArtistSortOrder(final String value) {
-        setSortOrder(ARTIST_SORT_ORDER, value);
-    }
-
-    /**
-     * @return The sort order used for the artist list in {@link ArtistFragment}
-     */
-    public final String getArtistSortOrder() {
-        return mPreferences.getString(ARTIST_SORT_ORDER, SortOrder.ArtistSortOrder.ARTIST_A_Z);
-    }
-
-    /**
-     * Sets the sort order for the artist song list.
-     * 
-     * @param value The new sort order
-     */
-    public void setArtistSongSortOrder(final String value) {
-        setSortOrder(ARTIST_SONG_SORT_ORDER, value);
-    }
-
-    /**
-     * @return The sort order used for the artist song list in
-     *         {@link ArtistSongFragment}
-     */
-    public final String getArtistSongSortOrder() {
-        return mPreferences.getString(ARTIST_SONG_SORT_ORDER,
-                SortOrder.ArtistSongSortOrder.SONG_A_Z);
-    }
-
-    /**
-     * Sets the sort order for the artist album list.
-     * 
-     * @param value The new sort order
-     */
-    public void setArtistAlbumSortOrder(final String value) {
-        setSortOrder(ARTIST_ALBUM_SORT_ORDER, value);
-    }
-
-    /**
-     * @return The sort order used for the artist album list in
-     *         {@link ArtistAlbumFragment}
-     */
-    public final String getArtistAlbumSortOrder() {
-        return mPreferences.getString(ARTIST_ALBUM_SORT_ORDER,
-                SortOrder.ArtistAlbumSortOrder.ALBUM_A_Z);
-    }
-
-    /**
-     * Sets the sort order for the album list.
-     * 
-     * @param value The new sort order
-     */
-    public void setAlbumSortOrder(final String value) {
-        setSortOrder(ALBUM_SORT_ORDER, value);
-    }
-
-    /**
-     * @return The sort order used for the album list in {@link AlbumFragment}
-     */
-    public final String getAlbumSortOrder() {
-        return mPreferences.getString(ALBUM_SORT_ORDER, SortOrder.AlbumSortOrder.ALBUM_A_Z);
-    }
-
-    /**
-     * Sets the sort order for the album song list.
-     * 
-     * @param value The new sort order
-     */
-    public void setAlbumSongSortOrder(final String value) {
-        setSortOrder(ALBUM_SONG_SORT_ORDER, value);
-    }
-
-    /**
-     * @return The sort order used for the album song in
-     *         {@link AlbumSongFragment}
-     */
-    public final String getAlbumSongSortOrder() {
-        return mPreferences.getString(ALBUM_SONG_SORT_ORDER,
-                SortOrder.AlbumSongSortOrder.SONG_TRACK_LIST);
-    }
-
-    /**
-     * Sets the sort order for the song list.
-     * 
-     * @param value The new sort order
-     */
-    public void setSongSortOrder(final String value) {
-        setSortOrder(SONG_SORT_ORDER, value);
-    }
-
-    /**
      * @return The sort order used for the song list in {@link SongFragment}
      */
     public final String getSongSortOrder() {
@@ -386,60 +189,12 @@ public final class PreferenceUtils {
     }
 
     /**
-     * Saves the layout type for a list
+     * Returns the last page the user was on when the app was exited.
      * 
-     * @param key Which layout to change
-     * @param value The new layout type
+     * @return The page to start on when the app is opened.
      */
-    private void setLayoutType(final String key, final String value) {
-        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(final Void... unused) {
-                final SharedPreferences.Editor editor = mPreferences.edit();
-                editor.putString(key, value);
-                SharedPreferencesCompat.apply(editor);
-
-                return null;
-            }
-        }, (Void[])null);
-    }
-
-    /**
-     * Sets the layout type for the artist list
-     * 
-     * @param value The new layout type
-     */
-    public void setArtistLayout(final String value) {
-        setLayoutType(ARTIST_LAYOUT, value);
-    }
-
-    /**
-     * Sets the layout type for the album list
-     * 
-     * @param value The new layout type
-     */
-    public void setAlbumLayout(final String value) {
-        setLayoutType(ALBUM_LAYOUT, value);
-    }
-
-    /**
-     * Sets the layout type for the recent list
-     * 
-     * @param value The new layout type
-     */
-    public void setRecentLayout(final String value) {
-        setLayoutType(RECENT_LAYOUT, value);
-    }
-
-    /**
-     * @param context The {@link Context} to use.
-     * @param which Which list to check.
-     * @return True if the layout type is the simple layout, false otherwise.
-     */
-    public boolean isSimpleLayout(final String which, final Context context) {
-        final String simple = "simple";
-        final String defaultValue = "grid";
-        return mPreferences.getString(which, defaultValue).equals(simple);
+    public final int getStartPage() {
+        return mPreferences.getInt(START_PAGE, DEFFAULT_PAGE);
     }
 
     /**
@@ -462,6 +217,251 @@ public final class PreferenceUtils {
         final String grid = "grid";
         final String defaultValue = "simple";
         return mPreferences.getString(which, defaultValue).equals(grid);
+    }
+
+    /**
+     * @param context The {@link Context} to use.
+     * @param which Which list to check.
+     * @return True if the layout type is the simple layout, false otherwise.
+     */
+    public boolean isSimpleLayout(final String which, final Context context) {
+        final String simple = "simple";
+        final String defaultValue = "grid";
+        return mPreferences.getString(which, defaultValue).equals(simple);
+    }
+
+    /**
+     * @return True if the user has checked to only download images on Wi-Fi,
+     *         false otherwise
+     */
+    public final boolean onlyOnWifi() {
+        return mPreferences.getBoolean(ONLY_ON_WIFI, true);
+    }
+
+    /**
+     * Sets the layout type for the album list
+     * 
+     * @param value The new layout type
+     */
+    public void setAlbumLayout(final String value) {
+        setLayoutType(ALBUM_LAYOUT, value);
+    }
+
+    /**
+     * Sets the sort order for the album song list.
+     * 
+     * @param value The new sort order
+     */
+    public void setAlbumSongSortOrder(final String value) {
+        setSortOrder(ALBUM_SONG_SORT_ORDER, value);
+    }
+
+    /**
+     * Sets the sort order for the album list.
+     * 
+     * @param value The new sort order
+     */
+    public void setAlbumSortOrder(final String value) {
+        setSortOrder(ALBUM_SORT_ORDER, value);
+    }
+
+    /**
+     * Sets the sort order for the artist album list.
+     * 
+     * @param value The new sort order
+     */
+    public void setArtistAlbumSortOrder(final String value) {
+        setSortOrder(ARTIST_ALBUM_SORT_ORDER, value);
+    }
+
+    /**
+     * Sets the layout type for the artist list
+     * 
+     * @param value The new layout type
+     */
+    public void setArtistLayout(final String value) {
+        setLayoutType(ARTIST_LAYOUT, value);
+    }
+
+    /**
+     * Sets the sort order for the artist song list.
+     * 
+     * @param value The new sort order
+     */
+    public void setArtistSongSortOrder(final String value) {
+        setSortOrder(ARTIST_SONG_SORT_ORDER, value);
+    }
+
+    /**
+     * Sets the sort order for the artist list.
+     * 
+     * @param value The new sort order
+     */
+    public void setArtistSortOrder(final String value) {
+        setSortOrder(ARTIST_SORT_ORDER, value);
+    }
+
+    /**
+     * Sets the new theme color.
+     * 
+     * @param value The new theme color to use.
+     */
+    public void setDefaultThemeColor(final int value) {
+        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(final Void... unused) {
+                final SharedPreferences.Editor editor = mPreferences.edit();
+                editor.putInt(DEFAULT_THEME_COLOR, value);
+                SharedPreferencesCompat.apply(editor);
+
+                return null;
+            }
+        }, (Void[]) null);
+    }
+
+    /**
+     * @param context The {@link Context} to use
+     * @param value True if the user only wants to download missing artist
+     *            images , false otherwise.
+     */
+    public void setDownloadMissingArtistImages(final boolean value) {
+        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(final Void... unused) {
+                final SharedPreferences.Editor editor = mPreferences.edit();
+                editor.putBoolean(DOWNLOAD_MISSING_ARTIST_IMAGES, value);
+                SharedPreferencesCompat.apply(editor);
+
+                return null;
+            }
+        }, (Void[]) null);
+    }
+
+    /**
+     * @param context The {@link Context} to use
+     * @param value True if the user only wants to download missing album
+     *            covers, false otherwise.
+     */
+    public void setDownloadMissingArtwork(final boolean value) {
+        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(final Void... unused) {
+                final SharedPreferences.Editor editor = mPreferences.edit();
+                editor.putBoolean(DOWNLOAD_MISSING_ARTWORK, value);
+                SharedPreferencesCompat.apply(editor);
+
+                return null;
+            }
+        }, (Void[]) null);
+    }
+
+    /**
+     * Saves the layout type for a list
+     * 
+     * @param key Which layout to change
+     * @param value The new layout type
+     */
+    private void setLayoutType(final String key, final String value) {
+        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(final Void... unused) {
+                final SharedPreferences.Editor editor = mPreferences.edit();
+                editor.putString(key, value);
+                SharedPreferencesCompat.apply(editor);
+
+                return null;
+            }
+        }, (Void[]) null);
+    }
+
+    /**
+     * @param value True if the user has checked to use lockscreen controls,
+     *            false otherwise.
+     */
+    public void setLockscreenControls(final boolean value) {
+        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(final Void... unused) {
+                final SharedPreferences.Editor editor = mPreferences.edit();
+                editor.putBoolean(USE_LOCKSREEN_CONTROLS, value);
+                SharedPreferencesCompat.apply(editor);
+
+                return null;
+            }
+        }, (Void[]) null);
+    }
+
+    /**
+     * @param value True if the user only wants to download images on Wi-Fi,
+     *            false otherwise
+     */
+    public void setOnlyOnWifi(final boolean value) {
+        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(final Void... unused) {
+                final SharedPreferences.Editor editor = mPreferences.edit();
+                editor.putBoolean(ONLY_ON_WIFI, value);
+                SharedPreferencesCompat.apply(editor);
+
+                return null;
+            }
+        }, (Void[]) null);
+    }
+
+    /**
+     * Sets the layout type for the recent list
+     * 
+     * @param value The new layout type
+     */
+    public void setRecentLayout(final String value) {
+        setLayoutType(RECENT_LAYOUT, value);
+    }
+
+    /**
+     * Sets the sort order for the song list.
+     * 
+     * @param value The new sort order
+     */
+    public void setSongSortOrder(final String value) {
+        setSortOrder(SONG_SORT_ORDER, value);
+    }
+
+    /**
+     * Saves the sort order for a list.
+     * 
+     * @param key Which sort order to change
+     * @param value The new sort order
+     */
+    private void setSortOrder(final String key, final String value) {
+        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(final Void... unused) {
+                final SharedPreferences.Editor editor = mPreferences.edit();
+                editor.putString(key, value);
+                SharedPreferencesCompat.apply(editor);
+
+                return null;
+            }
+        }, (Void[]) null);
+    }
+
+    /**
+     * Saves the current page the user is on when they close the app.
+     * 
+     * @param value The last page the pager was on when the onDestroy is called
+     *            in {@link MusicBrowserPhoneFragment}.
+     */
+    public void setStartPage(final int value) {
+        ApolloUtils.execute(false, new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(final Void... unused) {
+                final SharedPreferences.Editor editor = mPreferences.edit();
+                editor.putInt(START_PAGE, value);
+                SharedPreferencesCompat.apply(editor);
+
+                return null;
+            }
+        }, (Void[]) null);
     }
 
 }

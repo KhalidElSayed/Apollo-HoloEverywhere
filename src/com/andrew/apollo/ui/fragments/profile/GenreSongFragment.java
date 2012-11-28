@@ -11,26 +11,29 @@
 
 package com.andrew.apollo.ui.fragments.profile;
 
-import android.app.Activity;
+import java.util.List;
+
+import org.holoeverywhere.LayoutInflater;
+import org.holoeverywhere.app.Activity;
+import org.holoeverywhere.app.Fragment;
+import org.holoeverywhere.widget.ListView;
+
 import android.database.Cursor;
 import android.os.Bundle;
 import android.os.SystemClock;
-import android.support.v4.app.Fragment;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.content.Loader;
-import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.SubMenu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.AdapterView.OnItemClickListener;
-import android.widget.ListView;
 
-import com.actionbarsherlock.app.SherlockFragment;
+import com.actionbarsherlock.view.ContextMenu;
+import com.actionbarsherlock.view.Menu;
+import com.actionbarsherlock.view.MenuItem;
+import com.actionbarsherlock.view.SubMenu;
 import com.andrew.apollo.Config;
 import com.andrew.apollo.R;
 import com.andrew.apollo.adapters.ProfileSongAdapter;
@@ -46,14 +49,12 @@ import com.andrew.apollo.utils.NavUtils;
 import com.andrew.apollo.widgets.ProfileTabCarousel;
 import com.andrew.apollo.widgets.VerticalScrollListener;
 
-import java.util.List;
-
 /**
  * This class is used to display all of the songs from a particular playlist.
  * 
  * @author Andrew Neal (andrewdneal@gmail.com)
  */
-public class GenreSongFragment extends SherlockFragment implements LoaderCallbacks<List<Song>>,
+public class GenreSongFragment extends Fragment implements LoaderCallbacks<List<Song>>,
         OnItemClickListener {
 
     /**
@@ -77,14 +78,9 @@ public class GenreSongFragment extends SherlockFragment implements LoaderCallbac
     private ListView mListView;
 
     /**
-     * Represents a song
+     * Profile header
      */
-    private Song mSong;
-
-    /**
-     * Position of a context menu item
-     */
-    private int mSelectedPosition;
+    private ProfileTabCarousel mProfileTabCarousel;
 
     /**
      * Id of a context menu item
@@ -92,66 +88,24 @@ public class GenreSongFragment extends SherlockFragment implements LoaderCallbac
     private long mSelectedId;
 
     /**
+     * Position of a context menu item
+     */
+    private int mSelectedPosition;
+
+    /**
+     * Represents a song
+     */
+    private Song mSong;
+
+    /**
      * Song, album, and artist name used in the context menu
      */
     private String mSongName, mAlbumName, mArtistName;
 
     /**
-     * Profile header
-     */
-    private ProfileTabCarousel mProfileTabCarousel;
-
-    /**
      * Empty constructor as per the {@link Fragment} documentation
      */
     public GenreSongFragment() {
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onAttach(final Activity activity) {
-        super.onAttach(activity);
-        mProfileTabCarousel = (ProfileTabCarousel)activity
-                .findViewById(R.id.acivity_profile_base_tab_carousel);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onCreate(final Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        // Create the adpater
-        mAdapter = new ProfileSongAdapter(getSherlockActivity(), R.layout.list_item_simple);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public View onCreateView(final LayoutInflater inflater, final ViewGroup container,
-            final Bundle savedInstanceState) {
-        // The View for the fragment's UI
-        final ViewGroup rootView = (ViewGroup)inflater.inflate(R.layout.list_base, null);
-        // Initialize the list
-        mListView = (ListView)rootView.findViewById(R.id.list_base);
-        // Set the data behind the list
-        mListView.setAdapter(mAdapter);
-        // Release any references to the recycled Views
-        mListView.setRecyclerListener(new RecycleHolder());
-        // Listen for ContextMenus to be created
-        mListView.setOnCreateContextMenuListener(this);
-        // Play the selected song
-        mListView.setOnItemClickListener(this);
-        // To help make scrolling smooth
-        mListView.setOnScrollListener(new VerticalScrollListener(null, mProfileTabCarousel, 0));
-        // Remove the scrollbars and padding for the fast scroll
-        mListView.setVerticalScrollBarEnabled(false);
-        mListView.setFastScrollEnabled(false);
-        mListView.setPadding(0, 0, 0, 0);
-        return rootView;
     }
 
     /**
@@ -173,9 +127,68 @@ public class GenreSongFragment extends SherlockFragment implements LoaderCallbac
      * {@inheritDoc}
      */
     @Override
-    public void onSaveInstanceState(final Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putAll(getArguments() != null ? getArguments() : new Bundle());
+    public void onAttach(final Activity activity) {
+        super.onAttach(activity);
+        mProfileTabCarousel = (ProfileTabCarousel) activity
+                .findViewById(R.id.acivity_profile_base_tab_carousel);
+    }
+
+    @Override
+    public boolean onContextItemSelected(final MenuItem item) {
+        if (item.getGroupId() == GROUP_ID) {
+            switch (item.getItemId()) {
+                case FragmentMenuItems.PLAY_SELECTION:
+                    MusicUtils.playAll(getSupportActivity(), new long[] {
+                            mSelectedId
+                    }, 0, false);
+                    return true;
+                case FragmentMenuItems.ADD_TO_QUEUE:
+                    MusicUtils.addToQueue(getSupportActivity(), new long[] {
+                            mSelectedId
+                    });
+                    return true;
+                case FragmentMenuItems.ADD_TO_FAVORITES:
+                    FavoritesStore.getInstance(getSupportActivity()).addSongId(
+                            Long.valueOf(mSelectedId), mSongName, mAlbumName, mArtistName);
+                    return true;
+                case FragmentMenuItems.NEW_PLAYLIST:
+                    CreateNewPlaylist.getInstance(new long[] {
+                            mSelectedId
+                    }).show(getFragmentManager(), "CreatePlaylist");
+                    return true;
+                case FragmentMenuItems.PLAYLIST_SELECTED:
+                    final long mPlaylistId = item.getIntent().getLongExtra("playlist", 0);
+                    MusicUtils.addToPlaylist(getSupportActivity(), new long[] {
+                            mSelectedId
+                    }, mPlaylistId);
+                    return true;
+                case FragmentMenuItems.MORE_BY_ARTIST:
+                    NavUtils.openArtistProfile(getSupportActivity(), mArtistName);
+                    return true;
+                case FragmentMenuItems.USE_AS_RINGTONE:
+                    MusicUtils.setRingtone(getSupportActivity(), mSelectedId);
+                    return true;
+                case FragmentMenuItems.DELETE:
+                    DeleteDialog.newInstance(mSong.mSongName, new long[] {
+                            mSelectedId
+                    }, null).show(getFragmentManager(), "DeleteDialog");
+                    refresh();
+                    return true;
+                default:
+                    break;
+            }
+        }
+        return super.onContextItemSelected(item);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onCreate(final Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        // Create the adpater
+        mAdapter = new ProfileSongAdapter(getSupportActivity(), R.layout.list_item_simple);
     }
 
     /**
@@ -186,7 +199,7 @@ public class GenreSongFragment extends SherlockFragment implements LoaderCallbac
             final ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, v, menuInfo);
         // Get the position of the selected item
-        final AdapterContextMenuInfo info = (AdapterContextMenuInfo)menuInfo;
+        final AdapterContextMenuInfo info = (AdapterContextMenuInfo) menuInfo;
         mSelectedPosition = info.position - 1;
         // Creat a new song
         mSong = mAdapter.getItem(mSelectedPosition);
@@ -206,7 +219,7 @@ public class GenreSongFragment extends SherlockFragment implements LoaderCallbac
         // Add the song to a playlist
         final SubMenu subMenu = menu.addSubMenu(GROUP_ID, FragmentMenuItems.ADD_TO_PLAYLIST,
                 Menu.NONE, R.string.add_to_playlist);
-        MusicUtils.makePlaylistMenu(getSherlockActivity(), GROUP_ID, subMenu, true);
+        MusicUtils.makePlaylistMenu(getSupportActivity(), GROUP_ID, subMenu, true);
 
         // View more content by the song artist
         menu.add(GROUP_ID, FragmentMenuItems.MORE_BY_ARTIST, Menu.NONE,
@@ -221,52 +234,39 @@ public class GenreSongFragment extends SherlockFragment implements LoaderCallbac
                 getString(R.string.context_menu_delete));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public boolean onContextItemSelected(final android.view.MenuItem item) {
-        if (item.getGroupId() == GROUP_ID) {
-            switch (item.getItemId()) {
-                case FragmentMenuItems.PLAY_SELECTION:
-                    MusicUtils.playAll(getSherlockActivity(), new long[] {
-                        mSelectedId
-                    }, 0, false);
-                    return true;
-                case FragmentMenuItems.ADD_TO_QUEUE:
-                    MusicUtils.addToQueue(getSherlockActivity(), new long[] {
-                        mSelectedId
-                    });
-                    return true;
-                case FragmentMenuItems.ADD_TO_FAVORITES:
-                    FavoritesStore.getInstance(getSherlockActivity()).addSongId(
-                            Long.valueOf(mSelectedId), mSongName, mAlbumName, mArtistName);
-                    return true;
-                case FragmentMenuItems.NEW_PLAYLIST:
-                    CreateNewPlaylist.getInstance(new long[] {
-                        mSelectedId
-                    }).show(getFragmentManager(), "CreatePlaylist");
-                    return true;
-                case FragmentMenuItems.PLAYLIST_SELECTED:
-                    final long mPlaylistId = item.getIntent().getLongExtra("playlist", 0);
-                    MusicUtils.addToPlaylist(getSherlockActivity(), new long[] {
-                        mSelectedId
-                    }, mPlaylistId);
-                    return true;
-                case FragmentMenuItems.MORE_BY_ARTIST:
-                    NavUtils.openArtistProfile(getSherlockActivity(), mArtistName);
-                    return true;
-                case FragmentMenuItems.USE_AS_RINGTONE:
-                    MusicUtils.setRingtone(getSherlockActivity(), mSelectedId);
-                    return true;
-                case FragmentMenuItems.DELETE:
-                    DeleteDialog.newInstance(mSong.mSongName, new long[] {
-                        mSelectedId
-                    }, null).show(getFragmentManager(), "DeleteDialog");
-                    refresh();
-                    return true;
-                default:
-                    break;
-            }
-        }
-        return super.onContextItemSelected(item);
+    public Loader<List<Song>> onCreateLoader(final int id, final Bundle args) {
+        return new GenreSongLoader(getSupportActivity(), args.getLong(Config.ID));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public View onCreateView(final LayoutInflater inflater, final ViewGroup container,
+            final Bundle savedInstanceState) {
+        // The View for the fragment's UI
+        final ViewGroup rootView = (ViewGroup) inflater.inflate(R.layout.list_base, null);
+        // Initialize the list
+        mListView = (ListView) rootView.findViewById(R.id.list_base);
+        // Set the data behind the list
+        mListView.setAdapter(mAdapter);
+        // Release any references to the recycled Views
+        mListView.setRecyclerListener(new RecycleHolder());
+        // Listen for ContextMenus to be created
+        mListView.setOnCreateContextMenuListener(this);
+        // Play the selected song
+        mListView.setOnItemClickListener(this);
+        // To help make scrolling smooth
+        mListView.setOnScrollListener(new VerticalScrollListener(null, mProfileTabCarousel, 0));
+        // Remove the scrollbars and padding for the fast scroll
+        mListView.setVerticalScrollBarEnabled(false);
+        mListView.setFastScrollEnabled(false);
+        mListView.setPadding(0, 0, 0, 0);
+        return rootView;
     }
 
     /**
@@ -278,10 +278,10 @@ public class GenreSongFragment extends SherlockFragment implements LoaderCallbac
         if (position == 0) {
             return;
         }
-        Cursor cursor = GenreSongLoader.makeGenreSongCursor(getSherlockActivity(), getArguments()
+        Cursor cursor = GenreSongLoader.makeGenreSongCursor(getSupportActivity(), getArguments()
                 .getLong(Config.ID));
         final long[] list = MusicUtils.getSongListForCursor(cursor);
-        MusicUtils.playAll(getSherlockActivity(), list, position - 1, false);
+        MusicUtils.playAll(getSupportActivity(), list, position - 1, false);
         cursor.close();
         cursor = null;
     }
@@ -290,8 +290,9 @@ public class GenreSongFragment extends SherlockFragment implements LoaderCallbac
      * {@inheritDoc}
      */
     @Override
-    public Loader<List<Song>> onCreateLoader(final int id, final Bundle args) {
-        return new GenreSongLoader(getSherlockActivity(), args.getLong(Config.ID));
+    public void onLoaderReset(final Loader<List<Song>> loader) {
+        // Clear the data in the adapter
+        mAdapter.unload();
     }
 
     /**
@@ -318,9 +319,9 @@ public class GenreSongFragment extends SherlockFragment implements LoaderCallbac
      * {@inheritDoc}
      */
     @Override
-    public void onLoaderReset(final Loader<List<Song>> loader) {
-        // Clear the data in the adapter
-        mAdapter.unload();
+    public void onSaveInstanceState(final Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putAll(getArguments() != null ? getArguments() : new Bundle());
     }
 
     /**

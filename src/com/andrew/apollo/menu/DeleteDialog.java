@@ -11,14 +11,15 @@
 
 package com.andrew.apollo.menu;
 
-import android.app.AlertDialog;
-import android.app.Dialog;
+import org.holoeverywhere.app.AlertDialog;
+import org.holoeverywhere.app.Dialog;
+import org.holoeverywhere.app.DialogFragment;
+import org.holoeverywhere.app.Fragment;
+
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 
-import com.actionbarsherlock.app.SherlockDialogFragment;
 import com.andrew.apollo.Config;
 import com.andrew.apollo.R;
 import com.andrew.apollo.cache.ImageFetcher;
@@ -32,23 +33,7 @@ import com.andrew.apollo.utils.MusicUtils;
  * 
  * @author Andrew Neal (andrewdneal@gmail.com)
  */
-public class DeleteDialog extends SherlockDialogFragment {
-
-    /**
-     * The item(s) to delete
-     */
-    private long[] mItemList;
-
-    /**
-     * The image cache
-     */
-    private ImageFetcher mFetcher;
-
-    /**
-     * Empty constructor as per the {@link Fragment} documentation
-     */
-    public DeleteDialog() {
-    }
+public class DeleteDialog extends DialogFragment {
 
     /**
      * @param title The title of the artist, album, or song to delete
@@ -67,6 +52,22 @@ public class DeleteDialog extends SherlockDialogFragment {
     }
 
     /**
+     * The image cache
+     */
+    private ImageFetcher mFetcher;
+
+    /**
+     * The item(s) to delete
+     */
+    private long[] mItemList;
+
+    /**
+     * Empty constructor as per the {@link Fragment} documentation
+     */
+    public DeleteDialog() {
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -80,9 +81,9 @@ public class DeleteDialog extends SherlockDialogFragment {
         // Get the dialog title
         final String title = arguments.getString(Config.NAME);
         // Initialize the image cache
-        mFetcher = ApolloUtils.getImageFetcher(getSherlockActivity());
+        mFetcher = ApolloUtils.getImageFetcher(getSupportActivity());
         // Build the dialog
-        return new AlertDialog.Builder(getSherlockActivity()).setTitle(delete + " " + title)
+        return new AlertDialog.Builder(getSupportActivity()).setTitle(delete + " " + title)
                 .setMessage(R.string.cannot_be_undone)
                 .setPositiveButton(delete, new OnClickListener() {
 
@@ -91,7 +92,7 @@ public class DeleteDialog extends SherlockDialogFragment {
                         // Remove the items from the image cache
                         mFetcher.removeFromCache(key);
                         // Delete the selected item(s)
-                        MusicUtils.deleteTracks(getSherlockActivity(), mItemList);
+                        MusicUtils.deleteTracks(getSupportActivity(), mItemList);
                         dialog.dismiss();
                     }
                 }).setNegativeButton(R.string.cancel, new OnClickListener() {

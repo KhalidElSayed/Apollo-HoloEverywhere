@@ -18,19 +18,20 @@ package com.andrew.apollo;
  */
 public final class Config {
 
-    /* This class is never initiated. */
-    public Config() {
-    }
-
-    /**
-     * My personal Last.fm API key, please use your own.
-     */
-    public static final String LASTFM_API_KEY = "0bec3f7ec1f914d7c960c12a916c8fb3";
-
     /**
      * Used to distinguish album art from artist images
      */
     public static final String ALBUM_ART_SUFFIX = "album";
+
+    /**
+     * The year an album was released passed to the profile activity
+     */
+    public static final String ALBUM_YEAR = "album_year";
+
+    /**
+     * The name of an artist passed to the profile activity
+     */
+    public static final String ARTIST_NAME = "artist_name";
 
     /**
      * The ID of an artist, album, genre, or playlist passed to the profile
@@ -39,20 +40,9 @@ public final class Config {
     public static final String ID = "id";
 
     /**
-     * The name of an artist, album, genre, or playlist passed to the profile
-     * activity
+     * My personal Last.fm API key, please use your own.
      */
-    public static final String NAME = "name";
-
-    /**
-     * The name of an artist passed to the profile activity
-     */
-    public static final String ARTIST_NAME = "artist_name";
-
-    /**
-     * The year an album was released passed to the profile activity
-     */
-    public static final String ALBUM_YEAR = "album_year";
+    public static final String LASTFM_API_KEY = "0bec3f7ec1f914d7c960c12a916c8fb3";
 
     /**
      * The MIME type passed to a the profile activity
@@ -60,7 +50,17 @@ public final class Config {
     public static final String MIME_TYPE = "mime_type";
 
     /**
+     * The name of an artist, album, genre, or playlist passed to the profile
+     * activity
+     */
+    public static final String NAME = "name";
+
+    /**
      * Play from search intent
      */
     public static final String PLAY_FROM_SEARCH = "android.media.action.MEDIA_PLAY_FROM_SEARCH";
+
+    /* This class is never initiated. */
+    public Config() {
+    }
 }

@@ -30,35 +30,6 @@ package com.andrew.apollo.lastfm;
  */
 public abstract class MusicEntry extends ImageHolder {
 
-    protected String name;
-
-    protected String url;
-
-    private String wikiSummary;
-
-    protected MusicEntry(final String name, final String url) {
-        this.name = name;
-        this.url = url;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public String getUrl() {
-        return url;
-    }
-
-    public String getWikiSummary() {
-        return wikiSummary;
-    }
-
-    @Override
-    public String toString() {
-        return this.getClass().getSimpleName() + "[" + "name='" + name + '\'' + ", url='" + url
-                + '\'' + ']';
-    }
-
     /**
      * Loads all generic information from an XML <code>DomElement</code> into
      * the given <code>MusicEntry</code> instance, i.e. the following tags:<br/>
@@ -90,5 +61,34 @@ public abstract class MusicEntry extends ImageHolder {
         }
         // images
         ImageHolder.loadImages(entry, element);
+    }
+
+    protected String name;
+
+    protected String url;
+
+    private String wikiSummary;
+
+    protected MusicEntry(final String name, final String url) {
+        this.name = name;
+        this.url = url;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public String getWikiSummary() {
+        return wikiSummary;
+    }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + "[" + "name='" + name + '\'' + ", url='" + url
+                + '\'' + ']';
     }
 }

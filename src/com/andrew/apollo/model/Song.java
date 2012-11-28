@@ -19,6 +19,21 @@ package com.andrew.apollo.model;
 public class Song {
 
     /**
+     * The song album
+     */
+    public String mAlbumName;
+
+    /**
+     * The song artist
+     */
+    public String mArtistName;
+
+    /**
+     * The song duration
+     */
+    public String mDuration;
+
+    /**
      * The unique Id of the song
      */
     public String mSongId;
@@ -27,21 +42,6 @@ public class Song {
      * The song name
      */
     public String mSongName;
-
-    /**
-     * The song artist
-     */
-    public String mArtistName;
-
-    /**
-     * The song album
-     */
-    public String mAlbumName;
-
-    /**
-     * The song duration
-     */
-    public String mDuration;
 
     /**
      * Constructor of <code>Song</code>
@@ -65,21 +65,6 @@ public class Song {
      * {@inheritDoc}
      */
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (mAlbumName == null ? 0 : mAlbumName.hashCode());
-        result = prime * result + (mArtistName == null ? 0 : mArtistName.hashCode());
-        result = prime * result + (mDuration == null ? 0 : mDuration.hashCode());
-        result = prime * result + (mSongId == null ? 0 : mSongId.hashCode());
-        result = prime * result + (mSongName == null ? 0 : mSongName.hashCode());
-        return result;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public boolean equals(final Object obj) {
         if (this == obj) {
             return true;
@@ -90,7 +75,7 @@ public class Song {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final Song other = (Song)obj;
+        final Song other = (Song) obj;
         if (mAlbumName == null) {
             if (other.mAlbumName != null) {
                 return false;
@@ -127,6 +112,21 @@ public class Song {
             return false;
         }
         return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + (mAlbumName == null ? 0 : mAlbumName.hashCode());
+        result = prime * result + (mArtistName == null ? 0 : mArtistName.hashCode());
+        result = prime * result + (mDuration == null ? 0 : mDuration.hashCode());
+        result = prime * result + (mSongId == null ? 0 : mSongId.hashCode());
+        result = prime * result + (mSongName == null ? 0 : mSongName.hashCode());
+        return result;
     }
 
     /**

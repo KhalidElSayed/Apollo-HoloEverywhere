@@ -38,14 +38,14 @@ public class GenreAdapter extends ArrayAdapter<Genre> {
     private static final int VIEW_TYPE_COUNT = 1;
 
     /**
-     * The resource Id of the layout to inflate
-     */
-    private final int mLayoutId;
-
-    /**
      * Used to cache the genre info
      */
     private DataHolder[] mData;
+
+    /**
+     * The resource Id of the layout to inflate
+     */
+    private final int mLayoutId;
 
     /**
      * Constructor of <code>GenreAdapter</code>
@@ -57,51 +57,6 @@ public class GenreAdapter extends ArrayAdapter<Genre> {
         super(context, 0);
         // Get the layout Id
         mLayoutId = layoutId;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public View getView(final int position, View convertView, final ViewGroup parent) {
-        // Recycle ViewHolder's items
-        MusicHolder holder;
-        if (convertView == null) {
-            convertView = LayoutInflater.from(getContext()).inflate(mLayoutId, parent, false);
-            holder = new MusicHolder(convertView);
-            // Hide the second and third lines of text
-            holder.mLineTwo.get().setVisibility(View.GONE);
-            holder.mLineThree.get().setVisibility(View.GONE);
-            // Make line one slightly larger
-            holder.mLineOne.get().setTextSize(TypedValue.COMPLEX_UNIT_PX,
-                    getContext().getResources().getDimension(R.dimen.text_size_large));
-            convertView.setTag(holder);
-        } else {
-            holder = (MusicHolder)convertView.getTag();
-        }
-
-        // Retrieve the data holder
-        final DataHolder dataHolder = mData[position];
-
-        // Set each genre name (line one)
-        holder.mLineOne.get().setText(dataHolder.mLineOne);
-        return convertView;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean hasStableIds() {
-        return true;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int getViewTypeCount() {
-        return VIEW_TYPE_COUNT;
     }
 
     /**
@@ -122,6 +77,51 @@ public class GenreAdapter extends ArrayAdapter<Genre> {
             // Genre names (line one)
             mData[i].mLineOne = genre.mGenreName;
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public View getView(final int position, View convertView, final ViewGroup parent) {
+        // Recycle ViewHolder's items
+        MusicHolder holder;
+        if (convertView == null) {
+            convertView = LayoutInflater.from(getContext()).inflate(mLayoutId, parent, false);
+            holder = new MusicHolder(convertView);
+            // Hide the second and third lines of text
+            holder.mLineTwo.get().setVisibility(View.GONE);
+            holder.mLineThree.get().setVisibility(View.GONE);
+            // Make line one slightly larger
+            holder.mLineOne.get().setTextSize(TypedValue.COMPLEX_UNIT_PX,
+                    getContext().getResources().getDimension(R.dimen.text_size_large));
+            convertView.setTag(holder);
+        } else {
+            holder = (MusicHolder) convertView.getTag();
+        }
+
+        // Retrieve the data holder
+        final DataHolder dataHolder = mData[position];
+
+        // Set each genre name (line one)
+        holder.mLineOne.get().setText(dataHolder.mLineOne);
+        return convertView;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getViewTypeCount() {
+        return VIEW_TYPE_COUNT;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean hasStableIds() {
+        return true;
     }
 
     /**

@@ -31,11 +31,33 @@ import android.widget.FrameLayout;
  */
 public class AlphaTouchInterceptorOverlay extends FrameLayout {
 
-    private final View mInterceptorLayer;
+    /**
+     * If the input value lies outside of the specified range, return the nearer
+     * bound. Otherwise, return the input value, unchanged.
+     */
+    public static float clamp(final float input, final float lowerBound, final float upperBound) {
+        if (input < lowerBound) {
+            return lowerBound;
+        } else if (input > upperBound) {
+            return upperBound;
+        }
+        return input;
+    }
+
+    /**
+     * Sets an alpha value on the view.
+     */
+    public static void setAlphaOnViewBackground(final View view, final float alpha) {
+        if (view != null) {
+            view.setBackgroundColor((int) (clamp(alpha, 0.0f, 1.0f) * 255) << 24);
+        }
+    }
 
     private float mAlpha = 0.0f;
 
     private View mAlphaLayer;
+
+    private final View mInterceptorLayer;
 
     /**
      * @param context The {@link Context} to use.
@@ -78,35 +100,13 @@ public class AlphaTouchInterceptorOverlay extends FrameLayout {
     }
 
     /** Delegate to interceptor-layer. */
-    public void setOverlayOnClickListener(final OnClickListener listener) {
-        mInterceptorLayer.setOnClickListener(listener);
-    }
-
-    /** Delegate to interceptor-layer. */
     public void setOverlayClickable(final boolean clickable) {
         mInterceptorLayer.setClickable(clickable);
     }
 
-    /**
-     * Sets an alpha value on the view.
-     */
-    public static void setAlphaOnViewBackground(final View view, final float alpha) {
-        if (view != null) {
-            view.setBackgroundColor((int)(clamp(alpha, 0.0f, 1.0f) * 255) << 24);
-        }
-    }
-
-    /**
-     * If the input value lies outside of the specified range, return the nearer
-     * bound. Otherwise, return the input value, unchanged.
-     */
-    public static float clamp(final float input, final float lowerBound, final float upperBound) {
-        if (input < lowerBound) {
-            return lowerBound;
-        } else if (input > upperBound) {
-            return upperBound;
-        }
-        return input;
+    /** Delegate to interceptor-layer. */
+    public void setOverlayOnClickListener(final OnClickListener listener) {
+        mInterceptorLayer.setOnClickListener(listener);
     }
 
 }

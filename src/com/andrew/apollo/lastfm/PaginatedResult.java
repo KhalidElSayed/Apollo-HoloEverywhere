@@ -36,9 +36,9 @@ public class PaginatedResult<T> implements Iterable<T> {
 
     private final int page;
 
-    private final int totalPages;
-
     public final Collection<T> pageResults;
+
+    private final int totalPages;
 
     /**
      * @param page

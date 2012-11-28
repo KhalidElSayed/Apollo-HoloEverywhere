@@ -11,6 +11,8 @@
 
 package com.andrew.apollo.ui.activities;
 
+import org.holoeverywhere.app.Activity;
+
 import android.app.SearchManager;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -20,12 +22,12 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.provider.MediaStore;
+import android.provider.MediaStore.MediaColumns;
 import android.support.v4.view.ViewPager;
 import android.support.v4.view.ViewPager.OnPageChangeListener;
 import android.view.View;
 
 import com.actionbarsherlock.app.ActionBar;
-import com.actionbarsherlock.app.SherlockFragmentActivity;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuItem;
 import com.andrew.apollo.Config;
@@ -50,8 +52,8 @@ import com.andrew.apollo.widgets.ProfileTabCarousel;
 import com.andrew.apollo.widgets.ProfileTabCarousel.Listener;
 
 /**
- * The {@link SherlockFragmentActivity} is used to display the data for specific
- * artists, albums, playlists, and genres. This class is only used on phones.
+ * The {@link Activity} is used to display the data for specific artists,
+ * albums, playlists, and genres. This class is only used on phones.
  * 
  * @author Andrew Neal (andrewdneal@gmail.com)
  */
@@ -65,14 +67,26 @@ public class ProfileActivity extends BaseActivity implements OnPageChangeListene
     private Bundle mArguments;
 
     /**
-     * View pager
+     * Artist name passed into the class
      */
-    private ViewPager mViewPager;
+    private String mArtistName;
+
+    /**
+     * Image cache
+     */
+    private ImageFetcher mImageFetcher;
 
     /**
      * Pager adpater
      */
     private PagerAdapter mPagerAdapter;
+
+    private PreferenceUtils mPreferences;
+
+    /**
+     * The main profile title
+     */
+    private String mProfileName;
 
     /**
      * Profile header carousel
@@ -85,21 +99,162 @@ public class ProfileActivity extends BaseActivity implements OnPageChangeListene
     private String mType;
 
     /**
-     * Artist name passed into the class
+     * View pager
      */
-    private String mArtistName;
+    private ViewPager mViewPager;
 
     /**
-     * The main profile title
+     * When the user chooses {@code #selectOldPhoto()} while viewing an album
+     * profile, the image is, most likely, reverted back to the locally found
+     * artwork. This is specifically for fetching the image from Last.fm.
      */
-    private String mProfileName;
+    public void fetchAlbumArt() {
+        // First remove the old image
+        removeFromCache();
+        // Fetch for the artwork
+        mTabCarousel.fetchAlbumPhoto(this, mProfileName);
+    }
+
+    private AlbumSongFragment getAlbumSongFragment() {
+        return (AlbumSongFragment) mPagerAdapter.getFragment(0);
+    }
+
+    private ArtistAlbumFragment getArtistAlbumFragment() {
+        return (ArtistAlbumFragment) mPagerAdapter.getFragment(1);
+    }
+
+    private ArtistSongFragment getArtistSongFragment() {
+        return (ArtistSongFragment) mPagerAdapter.getFragment(0);
+    }
 
     /**
-     * Image cache
+     * Finishes the activity and overrides the default animation.
      */
-    private ImageFetcher mImageFetcher;
+    private void goBack() {
+        finish();
+    }
 
-    private PreferenceUtils mPreferences;
+    /**
+     * Searches Google for the artist or album
+     */
+    public void googleSearch() {
+        String query = mProfileName;
+        if (isArtist()) {
+            query = mArtistName;
+        } else if (isAlbum()) {
+            query = mProfileName + " " + mArtistName;
+        }
+        final Intent googleSearch = new Intent(Intent.ACTION_WEB_SEARCH);
+        googleSearch.putExtra(SearchManager.QUERY, query);
+        startActivity(googleSearch);
+        // Make sure the notification starts.
+        MusicUtils.startBackgroundService(this);
+    }
+
+    /**
+     * @return True if the MIME type is vnd.android.cursor.dir/albums, false
+     *         otherwise.
+     */
+    private final boolean isAlbum() {
+        return mType.equals(MediaStore.Audio.Albums.CONTENT_TYPE);
+    }
+
+    /**
+     * @return True if the MIME type is vnd.android.cursor.dir/artists, false
+     *         otherwise.
+     */
+    private final boolean isArtist() {
+        return mType.equals(MediaStore.Audio.Artists.CONTENT_TYPE);
+    }
+
+    private boolean isArtistAlbumPage() {
+        return isArtist() && mViewPager.getCurrentItem() == 1;
+    }
+
+    private boolean isArtistSongPage() {
+        return isArtist() && mViewPager.getCurrentItem() == 0;
+    }
+
+    /**
+     * @return True if the MIME type is "Favorites", false otherwise.
+     */
+    private final boolean isFavorites() {
+        return mType.equals(getString(R.string.playlist_favorites));
+    }
+
+    /**
+     * @return True if the MIME type is vnd.android.cursor.dir/gere, false
+     *         otherwise.
+     */
+    private final boolean isGenre() {
+        return mType.equals(MediaStore.Audio.Genres.CONTENT_TYPE);
+    }
+
+    /**
+     * @return True if the MIME type is "LastAdded", false otherwise.
+     */
+    private final boolean isLastAdded() {
+        return mType.equals(getString(R.string.playlist_last_added));
+    }
+
+    /**
+     * @return True if the MIME type is vnd.android.cursor.dir/playlist, false
+     *         otherwise.
+     */
+    private final boolean isPlaylist() {
+        return mType.equals(MediaStore.Audio.Playlists.CONTENT_TYPE);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void onActivityResult(final int requestCode, final int resultCode, final Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == NEW_PHOTO) {
+            if (resultCode == RESULT_OK) {
+                final Uri selectedImage = data.getData();
+                final String[] filePathColumn = {
+                        MediaColumns.DATA
+                };
+
+                Cursor cursor = getContentResolver().query(selectedImage, filePathColumn, null,
+                        null, null);
+                if (cursor != null && cursor.moveToFirst()) {
+                    final int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
+                    final String picturePath = cursor.getString(columnIndex);
+                    cursor.close();
+                    cursor = null;
+
+                    String key = mProfileName;
+                    if (isArtist()) {
+                        key = mArtistName;
+                    } else if (isAlbum()) {
+                        key = mProfileName + Config.ALBUM_ART_SUFFIX;
+                    }
+
+                    final Bitmap bitmap = ImageFetcher.decodeSampledBitmapFromFile(picturePath);
+                    mImageFetcher.addBitmapToCache(key, bitmap);
+                    if (isAlbum()) {
+                        mTabCarousel.getAlbumArt().setImageBitmap(bitmap);
+                    } else {
+                        mTabCarousel.getPhoto().setImageBitmap(bitmap);
+                    }
+                }
+            } else {
+                selectOldPhoto();
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        goBack();
+    }
 
     /**
      * {@inheritDoc}
@@ -131,7 +286,7 @@ public class ProfileActivity extends BaseActivity implements OnPageChangeListene
         mPagerAdapter = new PagerAdapter(this);
 
         // Initialze the carousel
-        mTabCarousel = (ProfileTabCarousel)findViewById(R.id.acivity_profile_base_tab_carousel);
+        mTabCarousel = (ProfileTabCarousel) findViewById(R.id.acivity_profile_base_tab_carousel);
         mTabCarousel.reset();
         mTabCarousel.getPhoto().setOnClickListener(new View.OnClickListener() {
 
@@ -225,7 +380,7 @@ public class ProfileActivity extends BaseActivity implements OnPageChangeListene
         }
 
         // Initialize the ViewPager
-        mViewPager = (ViewPager)findViewById(R.id.acivity_profile_base_pager);
+        mViewPager = (ViewPager) findViewById(R.id.acivity_profile_base_pager);
         // Attch the adapter
         mViewPager.setAdapter(mPagerAdapter);
         // Offscreen limit
@@ -234,42 +389,6 @@ public class ProfileActivity extends BaseActivity implements OnPageChangeListene
         mViewPager.setOnPageChangeListener(this);
         // Attach the carousel listener
         mTabCarousel.setListener(this);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected void onPause() {
-        super.onPause();
-        mImageFetcher.flush();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int setContentView() {
-        return R.layout.activity_profile_base;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean onPrepareOptionsMenu(final Menu menu) {
-        // Theme the add to home screen icon
-        mResources.setAddToHomeScreenIcon(menu);
-        // Set the shuffle all title to "play all" if a playlist.
-        final MenuItem shuffle = menu.findItem(R.id.menu_shuffle);
-        String title = null;
-        if (isFavorites() || isLastAdded() || isPlaylist()) {
-            title = getString(R.string.menu_play_all);
-        } else {
-            title = getString(R.string.menu_shuffle);
-        }
-        shuffle.setTitle(title);
-        return super.onPrepareOptionsMenu(menu);
     }
 
     /**
@@ -406,41 +525,15 @@ public class ProfileActivity extends BaseActivity implements OnPageChangeListene
      * {@inheritDoc}
      */
     @Override
-    protected void onSaveInstanceState(final Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putAll(mArguments);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onBackPressed() {
-        super.onBackPressed();
-        goBack();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void onPageScrolled(final int position, final float positionOffset,
             final int positionOffsetPixels) {
         if (mViewPager.isFakeDragging()) {
             return;
         }
 
-        final int scrollToX = (int)((position + positionOffset) * mTabCarousel
+        final int scrollToX = (int) ((position + positionOffset) * mTabCarousel
                 .getAllowedHorizontalScrollLength());
         mTabCarousel.scrollTo(scrollToX, 0);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onPageSelected(final int position) {
-        mTabCarousel.setCurrentTab(position);
     }
 
     /**
@@ -457,20 +550,45 @@ public class ProfileActivity extends BaseActivity implements OnPageChangeListene
      * {@inheritDoc}
      */
     @Override
-    public void onTouchDown() {
-        if (!mViewPager.isFakeDragging()) {
-            mViewPager.beginFakeDrag();
-        }
+    public void onPageSelected(final int position) {
+        mTabCarousel.setCurrentTab(position);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void onTouchUp() {
-        if (mViewPager.isFakeDragging()) {
-            mViewPager.endFakeDrag();
+    protected void onPause() {
+        super.onPause();
+        mImageFetcher.flush();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean onPrepareOptionsMenu(final Menu menu) {
+        // Theme the add to home screen icon
+        mResources.setAddToHomeScreenIcon(menu);
+        // Set the shuffle all title to "play all" if a playlist.
+        final MenuItem shuffle = menu.findItem(R.id.menu_shuffle);
+        String title = null;
+        if (isFavorites() || isLastAdded() || isPlaylist()) {
+            title = getString(R.string.menu_play_all);
+        } else {
+            title = getString(R.string.menu_shuffle);
         }
+        shuffle.setTitle(title);
+        return super.onPrepareOptionsMenu(menu);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void onSaveInstanceState(final Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putAll(mArguments);
     }
 
     /**
@@ -495,42 +613,35 @@ public class ProfileActivity extends BaseActivity implements OnPageChangeListene
      * {@inheritDoc}
      */
     @Override
-    protected void onActivityResult(final int requestCode, final int resultCode, final Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == NEW_PHOTO) {
-            if (resultCode == RESULT_OK) {
-                final Uri selectedImage = data.getData();
-                final String[] filePathColumn = {
-                    MediaStore.Images.Media.DATA
-                };
-
-                Cursor cursor = getContentResolver().query(selectedImage, filePathColumn, null,
-                        null, null);
-                if (cursor != null && cursor.moveToFirst()) {
-                    final int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
-                    final String picturePath = cursor.getString(columnIndex);
-                    cursor.close();
-                    cursor = null;
-
-                    String key = mProfileName;
-                    if (isArtist()) {
-                        key = mArtistName;
-                    } else if (isAlbum()) {
-                        key = mProfileName + Config.ALBUM_ART_SUFFIX;
-                    }
-
-                    final Bitmap bitmap = ImageFetcher.decodeSampledBitmapFromFile(picturePath);
-                    mImageFetcher.addBitmapToCache(key, bitmap);
-                    if (isAlbum()) {
-                        mTabCarousel.getAlbumArt().setImageBitmap(bitmap);
-                    } else {
-                        mTabCarousel.getPhoto().setImageBitmap(bitmap);
-                    }
-                }
-            } else {
-                selectOldPhoto();
-            }
+    public void onTouchDown() {
+        if (!mViewPager.isFakeDragging()) {
+            mViewPager.beginFakeDrag();
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onTouchUp() {
+        if (mViewPager.isFakeDragging()) {
+            mViewPager.endFakeDrag();
+        }
+    }
+
+    /**
+     * Removes the header image from the cache.
+     */
+    private void removeFromCache() {
+        String key = mProfileName;
+        if (isArtist()) {
+            key = mArtistName;
+        } else if (isAlbum()) {
+            key = mProfileName + Config.ALBUM_ART_SUFFIX;
+        }
+        mImageFetcher.removeFromCache(key);
+        // Give the disk cache a little time before requesting a new image.
+        SystemClock.sleep(80);
     }
 
     /**
@@ -567,119 +678,10 @@ public class ProfileActivity extends BaseActivity implements OnPageChangeListene
     }
 
     /**
-     * When the user chooses {@code #selectOldPhoto()} while viewing an album
-     * profile, the image is, most likely, reverted back to the locally found
-     * artwork. This is specifically for fetching the image from Last.fm.
+     * {@inheritDoc}
      */
-    public void fetchAlbumArt() {
-        // First remove the old image
-        removeFromCache();
-        // Fetch for the artwork
-        mTabCarousel.fetchAlbumPhoto(this, mProfileName);
-    }
-
-    /**
-     * Searches Google for the artist or album
-     */
-    public void googleSearch() {
-        String query = mProfileName;
-        if (isArtist()) {
-            query = mArtistName;
-        } else if (isAlbum()) {
-            query = mProfileName + " " + mArtistName;
-        }
-        final Intent googleSearch = new Intent(Intent.ACTION_WEB_SEARCH);
-        googleSearch.putExtra(SearchManager.QUERY, query);
-        startActivity(googleSearch);
-        // Make sure the notification starts.
-        MusicUtils.startBackgroundService(this);
-    }
-
-    /**
-     * Removes the header image from the cache.
-     */
-    private void removeFromCache() {
-        String key = mProfileName;
-        if (isArtist()) {
-            key = mArtistName;
-        } else if (isAlbum()) {
-            key = mProfileName + Config.ALBUM_ART_SUFFIX;
-        }
-        mImageFetcher.removeFromCache(key);
-        // Give the disk cache a little time before requesting a new image.
-        SystemClock.sleep(80);
-    }
-
-    /**
-     * Finishes the activity and overrides the default animation.
-     */
-    private void goBack() {
-        finish();
-    }
-
-    /**
-     * @return True if the MIME type is vnd.android.cursor.dir/artists, false
-     *         otherwise.
-     */
-    private final boolean isArtist() {
-        return mType.equals(MediaStore.Audio.Artists.CONTENT_TYPE);
-    }
-
-    /**
-     * @return True if the MIME type is vnd.android.cursor.dir/albums, false
-     *         otherwise.
-     */
-    private final boolean isAlbum() {
-        return mType.equals(MediaStore.Audio.Albums.CONTENT_TYPE);
-    }
-
-    /**
-     * @return True if the MIME type is vnd.android.cursor.dir/gere, false
-     *         otherwise.
-     */
-    private final boolean isGenre() {
-        return mType.equals(MediaStore.Audio.Genres.CONTENT_TYPE);
-    }
-
-    /**
-     * @return True if the MIME type is vnd.android.cursor.dir/playlist, false
-     *         otherwise.
-     */
-    private final boolean isPlaylist() {
-        return mType.equals(MediaStore.Audio.Playlists.CONTENT_TYPE);
-    }
-
-    /**
-     * @return True if the MIME type is "Favorites", false otherwise.
-     */
-    private final boolean isFavorites() {
-        return mType.equals(getString(R.string.playlist_favorites));
-    }
-
-    /**
-     * @return True if the MIME type is "LastAdded", false otherwise.
-     */
-    private final boolean isLastAdded() {
-        return mType.equals(getString(R.string.playlist_last_added));
-    }
-
-    private boolean isArtistSongPage() {
-        return isArtist() && mViewPager.getCurrentItem() == 0;
-    }
-
-    private boolean isArtistAlbumPage() {
-        return isArtist() && mViewPager.getCurrentItem() == 1;
-    }
-
-    private ArtistSongFragment getArtistSongFragment() {
-        return (ArtistSongFragment)mPagerAdapter.getFragment(0);
-    }
-
-    private ArtistAlbumFragment getArtistAlbumFragment() {
-        return (ArtistAlbumFragment)mPagerAdapter.getFragment(1);
-    }
-
-    private AlbumSongFragment getAlbumSongFragment() {
-        return (AlbumSongFragment)mPagerAdapter.getFragment(0);
+    @Override
+    public int setContentView() {
+        return R.layout.activity_profile_base;
     }
 }

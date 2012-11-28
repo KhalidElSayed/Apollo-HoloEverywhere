@@ -7,13 +7,13 @@ package com.andrew.apollo;
 public interface MusicStateListener {
 
     /**
-     * Called when {@link MusicPlaybackService#REFRESH} is invoked
-     */
-    public void restartLoader();
-
-    /**
      * Called when {@link MusicPlaybackService#META_CHANGED} is invoked
      */
     public void onMetaChanged();
+
+    /**
+     * Called when {@link MusicPlaybackService#REFRESH} is invoked
+     */
+    public void restartLoader();
 
 }

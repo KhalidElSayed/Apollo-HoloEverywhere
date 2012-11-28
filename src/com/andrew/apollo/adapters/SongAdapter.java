@@ -38,14 +38,14 @@ public class SongAdapter extends ArrayAdapter<Song> {
     private static final int VIEW_TYPE_COUNT = 1;
 
     /**
-     * The resource Id of the layout to inflate
-     */
-    private final int mLayoutId;
-
-    /**
      * Used to cache the song info
      */
     private DataHolder[] mData;
+
+    /**
+     * The resource Id of the layout to inflate
+     */
+    private final int mLayoutId;
 
     /**
      * Constructor of <code>SongAdapter</code>
@@ -57,49 +57,6 @@ public class SongAdapter extends ArrayAdapter<Song> {
         super(context, 0);
         // Get the layout Id
         mLayoutId = layoutId;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public View getView(final int position, View convertView, final ViewGroup parent) {
-        // Recycle ViewHolder's items
-        MusicHolder holder;
-        if (convertView == null) {
-            convertView = LayoutInflater.from(getContext()).inflate(mLayoutId, parent, false);
-            holder = new MusicHolder(convertView);
-            // Hide the third line of text
-            holder.mLineThree.get().setVisibility(View.GONE);
-            convertView.setTag(holder);
-        } else {
-            holder = (MusicHolder)convertView.getTag();
-        }
-
-        // Retrieve the data holder
-        final DataHolder dataHolder = mData[position];
-
-        // Set each song name (line one)
-        holder.mLineOne.get().setText(dataHolder.mLineOne);
-        // Set the album name (line two)
-        holder.mLineTwo.get().setText(dataHolder.mLineTwo);
-        return convertView;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean hasStableIds() {
-        return true;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int getViewTypeCount() {
-        return VIEW_TYPE_COUNT;
     }
 
     /**
@@ -122,6 +79,49 @@ public class SongAdapter extends ArrayAdapter<Song> {
             // Album names (line two)
             mData[i].mLineTwo = song.mAlbumName;
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public View getView(final int position, View convertView, final ViewGroup parent) {
+        // Recycle ViewHolder's items
+        MusicHolder holder;
+        if (convertView == null) {
+            convertView = LayoutInflater.from(getContext()).inflate(mLayoutId, parent, false);
+            holder = new MusicHolder(convertView);
+            // Hide the third line of text
+            holder.mLineThree.get().setVisibility(View.GONE);
+            convertView.setTag(holder);
+        } else {
+            holder = (MusicHolder) convertView.getTag();
+        }
+
+        // Retrieve the data holder
+        final DataHolder dataHolder = mData[position];
+
+        // Set each song name (line one)
+        holder.mLineOne.get().setText(dataHolder.mLineOne);
+        // Set the album name (line two)
+        holder.mLineTwo.get().setText(dataHolder.mLineTwo);
+        return convertView;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getViewTypeCount() {
+        return VIEW_TYPE_COUNT;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean hasStableIds() {
+        return true;
     }
 
     /**

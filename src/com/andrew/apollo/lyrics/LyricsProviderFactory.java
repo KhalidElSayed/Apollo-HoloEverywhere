@@ -3,8 +3,11 @@ package com.andrew.apollo.lyrics;
 
 public final class LyricsProviderFactory {
 
-    /* This class is never initiated. */
-    public LyricsProviderFactory() {
+    /**
+     * @return The current lyrics provider.
+     */
+    public static final LyricsProvider getMainOnlineProvider() {
+        return new LyricsWikiProvider();
     }
 
     /**
@@ -15,11 +18,8 @@ public final class LyricsProviderFactory {
         return new OfflineLyricsProvider(filePath);
     }
 
-    /**
-     * @return The current lyrics provider.
-     */
-    public static final LyricsProvider getMainOnlineProvider() {
-        return new LyricsWikiProvider();
+    /* This class is never initiated. */
+    public LyricsProviderFactory() {
     }
 
     // TODO Implement more providers, and also a system to iterate over them

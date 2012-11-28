@@ -11,6 +11,9 @@
 
 package com.andrew.apollo.loaders;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import android.content.Context;
 import android.content.res.Resources;
 import android.database.Cursor;
@@ -22,9 +25,6 @@ import com.andrew.apollo.R;
 import com.andrew.apollo.model.Playlist;
 import com.andrew.apollo.utils.Lists;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Used to query {@link MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI} and
  * return the playlists on a user's device.
@@ -34,14 +34,30 @@ import java.util.List;
 public class PlaylistLoader extends WrappedAsyncTaskLoader<List<Playlist>> {
 
     /**
-     * The result
+     * Creates the {@link Cursor} used to run the query.
+     * 
+     * @param context The {@link Context} to use.
+     * @return The {@link Cursor} used to run the playlist query.
      */
-    private final ArrayList<Playlist> mPlaylistList = Lists.newArrayList();
+    public static final Cursor makePlaylistCursor(final Context context) {
+        return context.getContentResolver().query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
+                new String[] {
+                        /* 0 */
+                        BaseColumns._ID,
+                        /* 1 */
+                        PlaylistsColumns.NAME
+                }, null, null, MediaStore.Audio.Playlists.DEFAULT_SORT_ORDER);
+    }
 
     /**
      * The {@link Cursor} used to run the query.
      */
     private Cursor mCursor;
+
+    /**
+     * The result
+     */
+    private final ArrayList<Playlist> mPlaylistList = Lists.newArrayList();
 
     /**
      * Constructor of <code>PlaylistLoader</code>
@@ -99,21 +115,5 @@ public class PlaylistLoader extends WrappedAsyncTaskLoader<List<Playlist>> {
         final Playlist lastAdded = new Playlist("-2",
                 resources.getString(R.string.playlist_last_added));
         mPlaylistList.add(lastAdded);
-    }
-
-    /**
-     * Creates the {@link Cursor} used to run the query.
-     * 
-     * @param context The {@link Context} to use.
-     * @return The {@link Cursor} used to run the playlist query.
-     */
-    public static final Cursor makePlaylistCursor(final Context context) {
-        return context.getContentResolver().query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
-                new String[] {
-                        /* 0 */
-                        BaseColumns._ID,
-                        /* 1 */
-                        PlaylistsColumns.NAME
-                }, null, null, MediaStore.Audio.Playlists.DEFAULT_SORT_ORDER);
     }
 }

@@ -11,6 +11,8 @@
 
 package com.andrew.apollo.cache;
 
+import java.lang.ref.WeakReference;
+
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -26,8 +28,6 @@ import com.andrew.apollo.R;
 import com.andrew.apollo.utils.ApolloUtils;
 import com.andrew.apollo.utils.ThemeUtils;
 
-import java.lang.ref.WeakReference;
-
 /**
  * This class wraps up completing some arbitrary long running work when loading
  * a {@link Bitmap} to an {@link ImageView}. It handles things like using a
@@ -37,131 +37,52 @@ import java.lang.ref.WeakReference;
 public abstract class ImageWorker {
 
     /**
-     * Default transition drawable fade time
+     * A custom {@link BitmapDrawable} that will be attached to the
+     * {@link ImageView} while the work is in progress. Contains a reference to
+     * the actual worker task, so that it can be stopped if a new binding is
+     * required, and makes sure that only the last started worker process can
+     * bind its result, independently of the finish order.
      */
-    private static final int FADE_IN_TIME = 200;
+    private static final class AsyncDrawable extends ColorDrawable {
 
-    /**
-     * Default artwork
-     */
-    private final BitmapDrawable mDefaultArtwork;
+        private final WeakReference<BitmapWorkerTask> mBitmapWorkerTaskReference;
 
-    /**
-     * The resources to use
-     */
-    private final Resources mResources;
-
-    /**
-     * First layer of the transition drawable
-     */
-    private final ColorDrawable mCurrentDrawable;
-
-    /**
-     * Layer drawable used to cross fade the result from the worker
-     */
-    private final Drawable[] mArrayDrawable;
-
-    /**
-     * Default album art
-     */
-    private final Bitmap mDefault;
-
-    /**
-     * The Context to use
-     */
-    protected Context mContext;
-
-    /**
-     * Disk and memory caches
-     */
-    protected ImageCache mImageCache;
-
-    /**
-     * Constructor of <code>ImageWorker</code>
-     * 
-     * @param context The {@link Context} to use
-     */
-    protected ImageWorker(final Context context) {
-        mContext = context.getApplicationContext();
-        mResources = mContext.getResources();
-        // Create the default artwork
-        final ThemeUtils theme = new ThemeUtils(context);
-        mDefault = ((BitmapDrawable)theme.getDrawable("default_artwork")).getBitmap();
-        mDefaultArtwork = new BitmapDrawable(mResources, mDefault);
-        // No filter and no dither makes things much quicker
-        mDefaultArtwork.setFilterBitmap(false);
-        mDefaultArtwork.setDither(false);
-        // Create the transparent layer for the transition drawable
-        mCurrentDrawable = new ColorDrawable(mResources.getColor(R.color.transparent));
-        // A transparent image (layer 0) and the new result (layer 1)
-        mArrayDrawable = new Drawable[2];
-        mArrayDrawable[0] = mCurrentDrawable;
-        // XXX The second layer is set in the worker task.
-    }
-
-    /**
-     * Set the {@link ImageCache} object to use with this ImageWorker.
-     * 
-     * @param cacheCallback new {@link ImageCache} object.
-     */
-    public void setImageCache(final ImageCache cacheCallback) {
-        mImageCache = cacheCallback;
-    }
-
-    /**
-     * @return True if the user is scrolling, false otherwise
-     */
-    public boolean isScrolling() {
-        if (mImageCache != null) {
-            return mImageCache.isScrolling();
+        /**
+         * Constructor of <code>AsyncDrawable</code>
+         */
+        public AsyncDrawable(final Resources res, final Bitmap bitmap,
+                final BitmapWorkerTask mBitmapWorkerTask) {
+            super(Color.TRANSPARENT);
+            mBitmapWorkerTaskReference = new WeakReference<BitmapWorkerTask>(mBitmapWorkerTask);
         }
-        return true;
-    }
 
-    /**
-     * Closes the disk cache associated with this ImageCache object. Note that
-     * this includes disk access so this should not be executed on the main/UI
-     * thread.
-     */
-    public void close() {
-        if (mImageCache != null) {
-            mImageCache.close();
+        /**
+         * @return The {@link BitmapWorkerTask} associated with this drawable
+         */
+        public BitmapWorkerTask getBitmapWorkerTask() {
+            return mBitmapWorkerTaskReference.get();
         }
-    }
-
-    /**
-     * flush() is called to synchronize up other methods that are accessing the
-     * cache first
-     */
-    public void flush() {
-        if (mImageCache != null) {
-            mImageCache.flush();
-        }
-    }
-
-    /**
-     * Adds a new image to the memory and disk caches
-     * 
-     * @param data The key used to store the image
-     * @param bitmap The {@link Bitmap} to cache
-     */
-    public void addBitmapToCache(final String key, final Bitmap bitmap) {
-        if (mImageCache != null) {
-            mImageCache.addBitmapToCache(key, bitmap);
-        }
-    }
-
-    /**
-     * @return The deafult artwork
-     */
-    public Bitmap getDefaultArtwork() {
-        return mDefault;
     }
 
     /**
      * The actual {@link AsyncTask} that will process the image.
      */
     private final class BitmapWorkerTask extends AsyncTask<String, Void, TransitionDrawable> {
+
+        /**
+         * The album ID used to find the corresponding artwork
+         */
+        private String mAlbumId;
+
+        /**
+         * Album name parm
+         */
+        private String mAlbumName;
+
+        /**
+         * Artist name param
+         */
+        private String mArtistName;
 
         /**
          * The {@link ImageView} used to set the result
@@ -177,21 +98,6 @@ public abstract class ImageWorker {
          * The key used to store cached entries
          */
         private String mKey;
-
-        /**
-         * Artist name param
-         */
-        private String mArtistName;
-
-        /**
-         * Album name parm
-         */
-        private String mAlbumName;
-
-        /**
-         * The album ID used to find the corresponding artwork
-         */
-        private String mAlbumId;
 
         /**
          * The URL of an image to download
@@ -279,20 +185,6 @@ public abstract class ImageWorker {
         }
 
         /**
-         * {@inheritDoc}
-         */
-        @Override
-        protected void onPostExecute(TransitionDrawable result) {
-            if (isCancelled()) {
-                result = null;
-            }
-            final ImageView imageView = getAttachedImageView();
-            if (result != null && imageView != null) {
-                imageView.setImageDrawable(result);
-            }
-        }
-
-        /**
          * @return The {@link ImageView} associated with this task as long as
          *         the ImageView's task still points to this task as well.
          *         Returns null otherwise.
@@ -305,7 +197,33 @@ public abstract class ImageWorker {
             }
             return null;
         }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        protected void onPostExecute(TransitionDrawable result) {
+            if (isCancelled()) {
+                result = null;
+            }
+            final ImageView imageView = getAttachedImageView();
+            if (result != null && imageView != null) {
+                imageView.setImageDrawable(result);
+            }
+        }
     }
+
+    /**
+     * Used to define what type of image URL to fetch for, artist or album.
+     */
+    public enum ImageType {
+        ALBUM, ARTIST;
+    }
+
+    /**
+     * Default transition drawable fade time
+     */
+    private static final int FADE_IN_TIME = 200;
 
     /**
      * Calls {@code cancel()} in the worker task
@@ -350,7 +268,7 @@ public abstract class ImageWorker {
         if (imageView != null) {
             final Drawable drawable = imageView.getDrawable();
             if (drawable instanceof AsyncDrawable) {
-                final AsyncDrawable asyncDrawable = (AsyncDrawable)drawable;
+                final AsyncDrawable asyncDrawable = (AsyncDrawable) drawable;
                 return asyncDrawable.getBitmapWorkerTask();
             }
         }
@@ -358,31 +276,111 @@ public abstract class ImageWorker {
     }
 
     /**
-     * A custom {@link BitmapDrawable} that will be attached to the
-     * {@link ImageView} while the work is in progress. Contains a reference to
-     * the actual worker task, so that it can be stopped if a new binding is
-     * required, and makes sure that only the last started worker process can
-     * bind its result, independently of the finish order.
+     * Layer drawable used to cross fade the result from the worker
      */
-    private static final class AsyncDrawable extends ColorDrawable {
+    private final Drawable[] mArrayDrawable;
 
-        private final WeakReference<BitmapWorkerTask> mBitmapWorkerTaskReference;
+    /**
+     * The Context to use
+     */
+    protected Context mContext;
 
-        /**
-         * Constructor of <code>AsyncDrawable</code>
-         */
-        public AsyncDrawable(final Resources res, final Bitmap bitmap,
-                final BitmapWorkerTask mBitmapWorkerTask) {
-            super(Color.TRANSPARENT);
-            mBitmapWorkerTaskReference = new WeakReference<BitmapWorkerTask>(mBitmapWorkerTask);
+    /**
+     * First layer of the transition drawable
+     */
+    private final ColorDrawable mCurrentDrawable;
+
+    /**
+     * Default album art
+     */
+    private final Bitmap mDefault;
+
+    /**
+     * Default artwork
+     */
+    private final BitmapDrawable mDefaultArtwork;
+
+    /**
+     * Disk and memory caches
+     */
+    protected ImageCache mImageCache;
+
+    /**
+     * The resources to use
+     */
+    private final Resources mResources;
+
+    /**
+     * Constructor of <code>ImageWorker</code>
+     * 
+     * @param context The {@link Context} to use
+     */
+    protected ImageWorker(final Context context) {
+        mContext = context.getApplicationContext();
+        mResources = mContext.getResources();
+        // Create the default artwork
+        final ThemeUtils theme = new ThemeUtils(context);
+        mDefault = ((BitmapDrawable) theme.getDrawable("default_artwork")).getBitmap();
+        mDefaultArtwork = new BitmapDrawable(mResources, mDefault);
+        // No filter and no dither makes things much quicker
+        mDefaultArtwork.setFilterBitmap(false);
+        mDefaultArtwork.setDither(false);
+        // Create the transparent layer for the transition drawable
+        mCurrentDrawable = new ColorDrawable(mResources.getColor(R.color.transparent));
+        // A transparent image (layer 0) and the new result (layer 1)
+        mArrayDrawable = new Drawable[2];
+        mArrayDrawable[0] = mCurrentDrawable;
+        // XXX The second layer is set in the worker task.
+    }
+
+    /**
+     * Adds a new image to the memory and disk caches
+     * 
+     * @param data The key used to store the image
+     * @param bitmap The {@link Bitmap} to cache
+     */
+    public void addBitmapToCache(final String key, final Bitmap bitmap) {
+        if (mImageCache != null) {
+            mImageCache.addBitmapToCache(key, bitmap);
         }
+    }
 
-        /**
-         * @return The {@link BitmapWorkerTask} associated with this drawable
-         */
-        public BitmapWorkerTask getBitmapWorkerTask() {
-            return mBitmapWorkerTaskReference.get();
+    /**
+     * Closes the disk cache associated with this ImageCache object. Note that
+     * this includes disk access so this should not be executed on the main/UI
+     * thread.
+     */
+    public void close() {
+        if (mImageCache != null) {
+            mImageCache.close();
         }
+    }
+
+    /**
+     * flush() is called to synchronize up other methods that are accessing the
+     * cache first
+     */
+    public void flush() {
+        if (mImageCache != null) {
+            mImageCache.flush();
+        }
+    }
+
+    /**
+     * @return The deafult artwork
+     */
+    public Bitmap getDefaultArtwork() {
+        return mDefault;
+    }
+
+    /**
+     * @return True if the user is scrolling, false otherwise
+     */
+    public boolean isScrolling() {
+        if (mImageCache != null) {
+            return mImageCache.isScrolling();
+        }
+        return true;
     }
 
     /**
@@ -445,10 +443,12 @@ public abstract class ImageWorker {
             ImageType imageType);
 
     /**
-     * Used to define what type of image URL to fetch for, artist or album.
+     * Set the {@link ImageCache} object to use with this ImageWorker.
+     * 
+     * @param cacheCallback new {@link ImageCache} object.
      */
-    public enum ImageType {
-        ARTIST, ALBUM;
+    public void setImageCache(final ImageCache cacheCallback) {
+        mImageCache = cacheCallback;
     }
 
 }

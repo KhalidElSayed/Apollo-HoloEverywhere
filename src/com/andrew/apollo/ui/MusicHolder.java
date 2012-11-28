@@ -11,6 +11,8 @@
 
 package com.andrew.apollo.ui;
 
+import java.lang.ref.WeakReference;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.view.View;
@@ -21,8 +23,6 @@ import android.widget.TextView;
 import com.andrew.apollo.R;
 import com.andrew.apollo.appwidgets.RecentWidgetService;
 
-import java.lang.ref.WeakReference;
-
 /**
  * Used to efficiently cache and recyle the {@link View}s used in the artist,
  * album, song, playlist, and genre adapters.
@@ -32,10 +32,49 @@ import java.lang.ref.WeakReference;
 public class MusicHolder {
 
     /**
-     * This is the overlay ontop of the background artist, playlist, or genre
-     * image
+     * @param view The {@link View} used to initialize content
      */
-    public WeakReference<RelativeLayout> mOverlay;
+    public final static class DataHolder {
+
+        /**
+         * This is the album art bitmap used in {@link RecentWidgetService}.
+         */
+        public Bitmap mImage;
+
+        /**
+         * This is the ID of the item being loaded in the adapter
+         */
+        public String mItemId;
+
+        /**
+         * This is the first line displayed in the list or grid
+         * 
+         * @see {@code #getView()} of a specific adapter for more detailed info
+         */
+        public String mLineOne;
+
+        /**
+         * This is the third line displayed in the list or grid
+         * 
+         * @see {@code #getView()} of a specific adapter for more detailed info
+         */
+        public String mLineThree;
+
+        /**
+         * This is the second line displayed in the list or grid
+         * 
+         * @see {@code #getView()} of a specific adapter for more detailed info
+         */
+        public String mLineTwo;
+
+        /**
+         * Constructor of <code>DataHolder</code>
+         */
+        public DataHolder() {
+            super();
+        }
+
+    }
 
     /**
      * This is the background artist, playlist, or genre image
@@ -55,6 +94,13 @@ public class MusicHolder {
     public WeakReference<TextView> mLineOne;
 
     /**
+     * This is the third line displayed in the list or grid
+     * 
+     * @see {@code #getView()} of a specific adapter for more detailed info
+     */
+    public WeakReference<TextView> mLineThree;
+
+    /**
      * This is the second line displayed in the list or grid
      * 
      * @see {@code #getView()} of a specific adapter for more detailed info
@@ -62,11 +108,10 @@ public class MusicHolder {
     public WeakReference<TextView> mLineTwo;
 
     /**
-     * This is the third line displayed in the list or grid
-     * 
-     * @see {@code #getView()} of a specific adapter for more detailed info
+     * This is the overlay ontop of the background artist, playlist, or genre
+     * image
      */
-    public WeakReference<TextView> mLineThree;
+    public WeakReference<RelativeLayout> mOverlay;
 
     /**
      * Constructor of <code>ViewHolder</code>
@@ -77,67 +122,22 @@ public class MusicHolder {
         super();
         // Initialize mOverlay
         mOverlay = new WeakReference<RelativeLayout>(
-                (RelativeLayout)view.findViewById(R.id.image_background));
+                (RelativeLayout) view.findViewById(R.id.image_background));
 
         // Initialize mBackground
         mBackground = new WeakReference<ImageView>(
-                (ImageView)view.findViewById(R.id.list_item_background));
+                (ImageView) view.findViewById(R.id.list_item_background));
 
         // Initialize mImage
-        mImage = new WeakReference<ImageView>((ImageView)view.findViewById(R.id.image));
+        mImage = new WeakReference<ImageView>((ImageView) view.findViewById(R.id.image));
 
         // Initialize mLineOne
-        mLineOne = new WeakReference<TextView>((TextView)view.findViewById(R.id.line_one));
+        mLineOne = new WeakReference<TextView>((TextView) view.findViewById(R.id.line_one));
 
         // Initialize mLineTwo
-        mLineTwo = new WeakReference<TextView>((TextView)view.findViewById(R.id.line_two));
+        mLineTwo = new WeakReference<TextView>((TextView) view.findViewById(R.id.line_two));
 
         // Initialize mLineThree
-        mLineThree = new WeakReference<TextView>((TextView)view.findViewById(R.id.line_three));
-    }
-
-    /**
-     * @param view The {@link View} used to initialize content
-     */
-    public final static class DataHolder {
-
-        /**
-         * This is the ID of the item being loaded in the adapter
-         */
-        public String mItemId;
-
-        /**
-         * This is the first line displayed in the list or grid
-         * 
-         * @see {@code #getView()} of a specific adapter for more detailed info
-         */
-        public String mLineOne;
-
-        /**
-         * This is the second line displayed in the list or grid
-         * 
-         * @see {@code #getView()} of a specific adapter for more detailed info
-         */
-        public String mLineTwo;
-
-        /**
-         * This is the third line displayed in the list or grid
-         * 
-         * @see {@code #getView()} of a specific adapter for more detailed info
-         */
-        public String mLineThree;
-
-        /**
-         * This is the album art bitmap used in {@link RecentWidgetService}.
-         */
-        public Bitmap mImage;
-
-        /**
-         * Constructor of <code>DataHolder</code>
-         */
-        public DataHolder() {
-            super();
-        }
-
+        mLineThree = new WeakReference<TextView>((TextView) view.findViewById(R.id.line_three));
     }
 }

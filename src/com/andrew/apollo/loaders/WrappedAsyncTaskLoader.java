@@ -40,6 +40,17 @@ public abstract class WrappedAsyncTaskLoader<D> extends AsyncTaskLoader<D> {
      * {@inheritDoc}
      */
     @Override
+    protected void onReset() {
+        super.onReset();
+        // Ensure the loader is stopped
+        onStopLoading();
+        this.mData = null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     protected void onStartLoading() {
         if (this.mData != null) {
             deliverResult(this.mData);
@@ -55,16 +66,5 @@ public abstract class WrappedAsyncTaskLoader<D> extends AsyncTaskLoader<D> {
     protected void onStopLoading() {
         // Attempt to cancel the current load task if possible
         cancelLoad();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected void onReset() {
-        super.onReset();
-        // Ensure the loader is stopped
-        onStopLoading();
-        this.mData = null;
     }
 }

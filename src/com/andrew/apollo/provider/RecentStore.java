@@ -35,44 +35,37 @@ import com.andrew.apollo.ui.activities.ProfileActivity;
  */
 public class RecentStore extends SQLiteOpenHelper {
 
-    /* Version constant to increment when the database should be rebuilt */
-    private static final int VERSION = 1;
+    public interface RecentStoreColumns {
+
+        /* Album name column */
+        public static final String ALBUMNAME = "itemname";
+
+        /* Album song count column */
+        public static final String ALBUMSONGCOUNT = "albumsongcount";
+
+        /* Album year column. It's okay for this to be null */
+        public static final String ALBUMYEAR = "albumyear";
+
+        /* Artist name column */
+        public static final String ARTISTNAME = "artistname";
+
+        /* Album IDs column */
+        public static final String ID = "albumid";
+
+        /* Table name */
+        public static final String NAME = "albumhistory";
+
+        /* Time played column */
+        public static final String TIMEPLAYED = "timeplayed";
+    }
 
     /* Name of database file */
     public static final String DATABASENAME = "albumhistory.db";
 
     private static RecentStore sInstance = null;
 
-    /**
-     * Constructor of <code>RecentStore</code>
-     * 
-     * @param context The {@link Context} to use
-     */
-    public RecentStore(final Context context) {
-        super(context, DATABASENAME, null, VERSION);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onCreate(final SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS " + RecentStoreColumns.NAME + " ("
-                + RecentStoreColumns.ID + " LONG NOT NULL," + RecentStoreColumns.ALBUMNAME
-                + " TEXT NOT NULL," + RecentStoreColumns.ARTISTNAME + " TEXT NOT NULL,"
-                + RecentStoreColumns.ALBUMSONGCOUNT + " TEXT NOT NULL,"
-                + RecentStoreColumns.ALBUMYEAR + " TEXT," + RecentStoreColumns.TIMEPLAYED
-                + " LONG NOT NULL);");
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onUpgrade(final SQLiteDatabase db, final int oldVersion, final int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + RecentStoreColumns.NAME);
-        onCreate(db);
-    }
+    /* Version constant to increment when the database should be rebuilt */
+    private static final int VERSION = 1;
 
     /**
      * @param context The {@link Context} to use
@@ -83,6 +76,15 @@ public class RecentStore extends SQLiteOpenHelper {
             sInstance = new RecentStore(context.getApplicationContext());
         }
         return sInstance;
+    }
+
+    /**
+     * Constructor of <code>RecentStore</code>
+     * 
+     * @param context The {@link Context} to use
+     */
+    public RecentStore(final Context context) {
+        super(context, DATABASENAME, null, VERSION);
     }
 
     /**
@@ -113,12 +115,20 @@ public class RecentStore extends SQLiteOpenHelper {
         values.put(RecentStoreColumns.TIMEPLAYED, System.currentTimeMillis());
 
         database.delete(RecentStoreColumns.NAME, RecentStoreColumns.ID + " = ?", new String[] {
-            String.valueOf(albumId)
+                String.valueOf(albumId)
         });
         database.insert(RecentStoreColumns.NAME, null, values);
         database.setTransactionSuccessful();
         database.endTransaction();
 
+    }
+
+    /**
+     * Clear the cache.
+     */
+    public void deleteDatabase() {
+        final SQLiteDatabase database = getReadableDatabase();
+        database.delete(RecentStoreColumns.NAME, null, null);
     }
 
     /**
@@ -138,7 +148,7 @@ public class RecentStore extends SQLiteOpenHelper {
         };
         final String selection = RecentStoreColumns.ARTISTNAME + "=?";
         final String[] having = new String[] {
-            key
+                key
         };
         Cursor cursor = database.query(RecentStoreColumns.NAME, projection, selection, having,
                 null, null, RecentStoreColumns.TIMEPLAYED + " DESC", null);
@@ -159,11 +169,25 @@ public class RecentStore extends SQLiteOpenHelper {
     }
 
     /**
-     * Clear the cache.
+     * {@inheritDoc}
      */
-    public void deleteDatabase() {
-        final SQLiteDatabase database = getReadableDatabase();
-        database.delete(RecentStoreColumns.NAME, null, null);
+    @Override
+    public void onCreate(final SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + RecentStoreColumns.NAME + " ("
+                + RecentStoreColumns.ID + " LONG NOT NULL," + RecentStoreColumns.ALBUMNAME
+                + " TEXT NOT NULL," + RecentStoreColumns.ARTISTNAME + " TEXT NOT NULL,"
+                + RecentStoreColumns.ALBUMSONGCOUNT + " TEXT NOT NULL,"
+                + RecentStoreColumns.ALBUMYEAR + " TEXT," + RecentStoreColumns.TIMEPLAYED
+                + " LONG NOT NULL);");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onUpgrade(final SQLiteDatabase db, final int oldVersion, final int newVersion) {
+        db.execSQL("DROP TABLE IF EXISTS " + RecentStoreColumns.NAME);
+        onCreate(db);
     }
 
     /**
@@ -172,32 +196,8 @@ public class RecentStore extends SQLiteOpenHelper {
     public void removeItem(final String albumId) {
         final SQLiteDatabase database = getReadableDatabase();
         database.delete(RecentStoreColumns.NAME, RecentStoreColumns.ID + " = ?", new String[] {
-            albumId
+                albumId
         });
 
-    }
-
-    public interface RecentStoreColumns {
-
-        /* Table name */
-        public static final String NAME = "albumhistory";
-
-        /* Album IDs column */
-        public static final String ID = "albumid";
-
-        /* Album name column */
-        public static final String ALBUMNAME = "itemname";
-
-        /* Artist name column */
-        public static final String ARTISTNAME = "artistname";
-
-        /* Album song count column */
-        public static final String ALBUMSONGCOUNT = "albumsongcount";
-
-        /* Album year column. It's okay for this to be null */
-        public static final String ALBUMYEAR = "albumyear";
-
-        /* Time played column */
-        public static final String TIMEPLAYED = "timeplayed";
     }
 }

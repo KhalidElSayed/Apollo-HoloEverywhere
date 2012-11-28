@@ -41,36 +41,59 @@ import android.view.ViewGroup;
 @TargetApi(Build.VERSION_CODES.HONEYCOMB)
 public class ShowHideMasterLayout extends ViewGroup implements Animator.AnimatorListener {
 
+    public interface OnMasterVisibilityChangedListener {
+        public void onMasterVisibilityChanged(boolean visible);
+    }
+
     /**
      * A flag for {@link #showMaster(boolean, int)} indicating that the change
      * in visiblity should not be animated.
      */
     public final static int FLAG_IMMEDIATE = 0x1;
 
-    private View sMasterView;
-
     private View mDetailView;
-
-    private OnMasterVisibilityChangedListener mOnMasterVisibilityChangedListener;
-
-    private GestureDetector mGestureDetector;
-
-    private Runnable mShowMasterCompleteRunnable;
 
     private boolean mFirstShow = true;
 
-    private boolean mMasterVisible = true;
-
     private boolean mFlingToExposeMaster;
 
+    private GestureDetector mGestureDetector;
+
+    private final GestureDetector.OnGestureListener mGestureListener = new GestureDetector.SimpleOnGestureListener() {
+        @Override
+        public boolean onDown(final MotionEvent e) {
+            return true;
+        }
+
+        @Override
+        public boolean onFling(final MotionEvent e1, final MotionEvent e2, final float velocityX,
+                final float velocityY) {
+            final ViewConfiguration mViewConfig = ViewConfiguration.get(getContext());
+            final float mAbsVelocityX = Math.abs(velocityX);
+            final float mAbsVelocityY = Math.abs(velocityY);
+            if (mFlingToExposeMaster && !mMasterVisible && velocityX > 0
+                    && mAbsVelocityX >= mAbsVelocityY
+                    && mAbsVelocityX > mViewConfig.getScaledMinimumFlingVelocity()
+                    && mAbsVelocityX < mViewConfig.getScaledMaximumFlingVelocity()) {
+                showMaster(true, 0);
+                return true;
+            }
+            return super.onFling(e1, e2, velocityX, velocityY);
+        }
+    };
+
     private boolean mIsAnimating;
+
+    private boolean mMasterVisible = true;
+
+    private OnMasterVisibilityChangedListener mOnMasterVisibilityChangedListener;
+
+    private Runnable mShowMasterCompleteRunnable;
 
     /* The last measured master width, including its margins */
     private int mTranslateAmount;
 
-    public interface OnMasterVisibilityChangedListener {
-        public void onMasterVisibilityChanged(boolean visible);
-    }
+    private View sMasterView;
 
     public ShowHideMasterLayout(final Context context) {
         super(context);
@@ -87,10 +110,6 @@ public class ShowHideMasterLayout extends ViewGroup implements Animator.Animator
         init();
     }
 
-    private void init() {
-        mGestureDetector = new GestureDetector(getContext(), mGestureListener);
-    }
-
     @Override
     public LayoutParams generateLayoutParams(final AttributeSet attrs) {
         return new MarginLayoutParams(getContext(), attrs);
@@ -99,6 +118,96 @@ public class ShowHideMasterLayout extends ViewGroup implements Animator.Animator
     @Override
     protected LayoutParams generateLayoutParams(final LayoutParams p) {
         return new MarginLayoutParams(p);
+    }
+
+    private void init() {
+        mGestureDetector = new GestureDetector(getContext(), mGestureListener);
+    }
+
+    /**
+     * Returns whether or not the master pane is visible.
+     * 
+     * @return True if the master pane is visible.
+     */
+    public boolean isMasterVisible() {
+        return mMasterVisible;
+    }
+
+    @Override
+    public void onAnimationCancel(final Animator animator) {
+        mIsAnimating = false;
+        sMasterView.setLayerType(LAYER_TYPE_NONE, null);
+        mDetailView.setLayerType(LAYER_TYPE_NONE, null);
+        requestLayout();
+        if (mShowMasterCompleteRunnable != null) {
+            mShowMasterCompleteRunnable.run();
+            mShowMasterCompleteRunnable = null;
+        }
+    }
+
+    @Override
+    public void onAnimationEnd(final Animator animator) {
+        mIsAnimating = false;
+        sMasterView.setLayerType(LAYER_TYPE_NONE, null);
+        mDetailView.setLayerType(LAYER_TYPE_NONE, null);
+        requestLayout();
+        if (mShowMasterCompleteRunnable != null) {
+            mShowMasterCompleteRunnable.run();
+            mShowMasterCompleteRunnable = null;
+        }
+    }
+
+    @Override
+    public void onAnimationRepeat(final Animator animator) {
+        /* Nothing to do */
+    }
+
+    @Override
+    public void onAnimationStart(final Animator animator) {
+        /* Nothing to do */
+    }
+
+    @Override
+    public boolean onInterceptTouchEvent(final MotionEvent event) {
+        if (mFlingToExposeMaster && !mMasterVisible) {
+            mGestureDetector.onTouchEvent(event);
+        }
+
+        if (event.getAction() == MotionEvent.ACTION_DOWN && sMasterView != null && mMasterVisible) {
+            if (event.getX() > mTranslateAmount) {
+                return true;
+            }
+        }
+        return super.onInterceptTouchEvent(event);
+    }
+
+    @Override
+    protected void onLayout(final boolean changed, final int l, final int t, final int r,
+            final int b) {
+        updateChildReferences();
+
+        if (sMasterView == null || mDetailView == null) {
+            return;
+        }
+
+        final int sMasterWidth = sMasterView.getMeasuredWidth();
+        final MarginLayoutParams sMasterLp = (MarginLayoutParams) sMasterView.getLayoutParams();
+        final MarginLayoutParams mDetailLp = (MarginLayoutParams) mDetailView.getLayoutParams();
+
+        mTranslateAmount = sMasterWidth + sMasterLp.leftMargin + sMasterLp.rightMargin;
+
+        sMasterView.layout(l + sMasterLp.leftMargin, t + sMasterLp.topMargin, l
+                + sMasterLp.leftMargin + sMasterWidth, b - sMasterLp.bottomMargin);
+
+        mDetailView.layout(l + mDetailLp.leftMargin + mTranslateAmount, t + mDetailLp.topMargin, r
+                - mDetailLp.rightMargin + mTranslateAmount, b - mDetailLp.bottomMargin);
+
+        /* Update translationX values */
+        if (!mIsAnimating) {
+            final float mTranslationX = mMasterVisible ? 0 : -mTranslateAmount;
+            sMasterView.setTranslationX(mTranslationX);
+            mDetailView.setTranslationX(mTranslationX);
+        }
     }
 
     @Override
@@ -117,7 +226,7 @@ public class ShowHideMasterLayout extends ViewGroup implements Animator.Animator
             }
 
             measureChildWithMargins(mChild, widthMeasureSpec, 0, heightMeasureSpec, 0);
-            final MarginLayoutParams mLayoutParams = (MarginLayoutParams)mChild.getLayoutParams();
+            final MarginLayoutParams mLayoutParams = (MarginLayoutParams) mChild.getLayoutParams();
             sMaxWidth = Math.max(sMaxWidth, mChild.getMeasuredWidth() + mLayoutParams.leftMargin
                     + mLayoutParams.rightMargin);
             sMaxHeight = Math.max(sMaxHeight, mChild.getMeasuredHeight() + mLayoutParams.topMargin
@@ -146,7 +255,7 @@ public class ShowHideMasterLayout extends ViewGroup implements Animator.Animator
                 continue;
             }
 
-            final MarginLayoutParams mLayoutParams = (MarginLayoutParams)child.getLayoutParams();
+            final MarginLayoutParams mLayoutParams = (MarginLayoutParams) child.getLayoutParams();
 
             int mChildWidthMeasureSpec;
             int mChildHeightMeasureSpec;
@@ -176,38 +285,24 @@ public class ShowHideMasterLayout extends ViewGroup implements Animator.Animator
     }
 
     @Override
-    protected void onLayout(final boolean changed, final int l, final int t, final int r,
-            final int b) {
-        updateChildReferences();
-
-        if (sMasterView == null || mDetailView == null) {
-            return;
+    public boolean onTouchEvent(final MotionEvent event) {
+        if (mFlingToExposeMaster && !mMasterVisible && mGestureDetector.onTouchEvent(event)) {
+            return true;
         }
 
-        final int sMasterWidth = sMasterView.getMeasuredWidth();
-        final MarginLayoutParams sMasterLp = (MarginLayoutParams)sMasterView.getLayoutParams();
-        final MarginLayoutParams mDetailLp = (MarginLayoutParams)mDetailView.getLayoutParams();
-
-        mTranslateAmount = sMasterWidth + sMasterLp.leftMargin + sMasterLp.rightMargin;
-
-        sMasterView.layout(l + sMasterLp.leftMargin, t + sMasterLp.topMargin, l
-                + sMasterLp.leftMargin + sMasterWidth, b - sMasterLp.bottomMargin);
-
-        mDetailView.layout(l + mDetailLp.leftMargin + mTranslateAmount, t + mDetailLp.topMargin, r
-                - mDetailLp.rightMargin + mTranslateAmount, b - mDetailLp.bottomMargin);
-
-        /* Update translationX values */
-        if (!mIsAnimating) {
-            final float mTranslationX = mMasterVisible ? 0 : -mTranslateAmount;
-            sMasterView.setTranslationX(mTranslationX);
-            mDetailView.setTranslationX(mTranslationX);
+        if (event.getAction() == MotionEvent.ACTION_DOWN && sMasterView != null && mMasterVisible) {
+            if (event.getX() > mTranslateAmount) {
+                showMaster(false, 0);
+                return true;
+            }
         }
+        return super.onTouchEvent(event);
     }
 
-    private void updateChildReferences() {
-        final int mChildCount = getChildCount();
-        sMasterView = mChildCount > 0 ? getChildAt(0) : null;
-        mDetailView = mChildCount > 1 ? getChildAt(1) : null;
+    @Override
+    public void requestDisallowInterceptTouchEvent(final boolean disallowIntercept) {
+        // Really bad hack... we really shouldn't do this.
+        // super.requestDisallowInterceptTouchEvent(disallowIntercept);
     }
 
     /**
@@ -230,15 +325,6 @@ public class ShowHideMasterLayout extends ViewGroup implements Animator.Animator
     public void setOnMasterVisibilityChangedListener(
             final OnMasterVisibilityChangedListener listener) {
         mOnMasterVisibilityChangedListener = listener;
-    }
-
-    /**
-     * Returns whether or not the master pane is visible.
-     * 
-     * @return True if the master pane is visible.
-     */
-    public boolean isMasterVisible() {
-        return mMasterVisible;
     }
 
     /**
@@ -304,95 +390,9 @@ public class ShowHideMasterLayout extends ViewGroup implements Animator.Animator
         }
     }
 
-    @Override
-    public void requestDisallowInterceptTouchEvent(final boolean disallowIntercept) {
-        // Really bad hack... we really shouldn't do this.
-        // super.requestDisallowInterceptTouchEvent(disallowIntercept);
-    }
-
-    @Override
-    public boolean onInterceptTouchEvent(final MotionEvent event) {
-        if (mFlingToExposeMaster && !mMasterVisible) {
-            mGestureDetector.onTouchEvent(event);
-        }
-
-        if (event.getAction() == MotionEvent.ACTION_DOWN && sMasterView != null && mMasterVisible) {
-            if (event.getX() > mTranslateAmount) {
-                return true;
-            }
-        }
-        return super.onInterceptTouchEvent(event);
-    }
-
-    @Override
-    public boolean onTouchEvent(final MotionEvent event) {
-        if (mFlingToExposeMaster && !mMasterVisible && mGestureDetector.onTouchEvent(event)) {
-            return true;
-        }
-
-        if (event.getAction() == MotionEvent.ACTION_DOWN && sMasterView != null && mMasterVisible) {
-            if (event.getX() > mTranslateAmount) {
-                showMaster(false, 0);
-                return true;
-            }
-        }
-        return super.onTouchEvent(event);
-    }
-
-    @Override
-    public void onAnimationEnd(final Animator animator) {
-        mIsAnimating = false;
-        sMasterView.setLayerType(LAYER_TYPE_NONE, null);
-        mDetailView.setLayerType(LAYER_TYPE_NONE, null);
-        requestLayout();
-        if (mShowMasterCompleteRunnable != null) {
-            mShowMasterCompleteRunnable.run();
-            mShowMasterCompleteRunnable = null;
-        }
-    }
-
-    @Override
-    public void onAnimationCancel(final Animator animator) {
-        mIsAnimating = false;
-        sMasterView.setLayerType(LAYER_TYPE_NONE, null);
-        mDetailView.setLayerType(LAYER_TYPE_NONE, null);
-        requestLayout();
-        if (mShowMasterCompleteRunnable != null) {
-            mShowMasterCompleteRunnable.run();
-            mShowMasterCompleteRunnable = null;
-        }
-    }
-
-    private final GestureDetector.OnGestureListener mGestureListener = new GestureDetector.SimpleOnGestureListener() {
-        @Override
-        public boolean onDown(final MotionEvent e) {
-            return true;
-        }
-
-        @Override
-        public boolean onFling(final MotionEvent e1, final MotionEvent e2, final float velocityX,
-                final float velocityY) {
-            final ViewConfiguration mViewConfig = ViewConfiguration.get(getContext());
-            final float mAbsVelocityX = Math.abs(velocityX);
-            final float mAbsVelocityY = Math.abs(velocityY);
-            if (mFlingToExposeMaster && !mMasterVisible && velocityX > 0
-                    && mAbsVelocityX >= mAbsVelocityY
-                    && mAbsVelocityX > mViewConfig.getScaledMinimumFlingVelocity()
-                    && mAbsVelocityX < mViewConfig.getScaledMaximumFlingVelocity()) {
-                showMaster(true, 0);
-                return true;
-            }
-            return super.onFling(e1, e2, velocityX, velocityY);
-        }
-    };
-
-    @Override
-    public void onAnimationStart(final Animator animator) {
-        /* Nothing to do */
-    }
-
-    @Override
-    public void onAnimationRepeat(final Animator animator) {
-        /* Nothing to do */
+    private void updateChildReferences() {
+        final int mChildCount = getChildCount();
+        sMasterView = mChildCount > 0 ? getChildAt(0) : null;
+        mDetailView = mChildCount > 1 ? getChildAt(1) : null;
     }
 }

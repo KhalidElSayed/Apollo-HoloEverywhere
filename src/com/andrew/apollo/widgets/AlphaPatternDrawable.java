@@ -28,20 +28,20 @@ import android.graphics.drawable.Drawable;
  */
 public class AlphaPatternDrawable extends Drawable {
 
+    /* Bitmap in which the pattern will be cached. */
+    private Bitmap mBitmap;
+
     private final Paint mPaint = new Paint();
 
-    private final Paint mPaintWhite = new Paint();
-
     private final Paint mPaintGray = new Paint();
+
+    private final Paint mPaintWhite = new Paint();
 
     private int mRectangleSize = 10;
 
     private int numRectanglesHorizontal;
 
     private int numRectanglesVertical;
-
-    /* Bitmap in which the pattern will be cached. */
-    private Bitmap mBitmap;
 
     /**/
     public AlphaPatternDrawable(final int rectangleSize) {
@@ -56,46 +56,6 @@ public class AlphaPatternDrawable extends Drawable {
     @Override
     public void draw(final Canvas canvas) {
         canvas.drawBitmap(mBitmap, null, getBounds(), mPaint);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int getOpacity() {
-        return 0;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setAlpha(final int alpha) {
-        throw new UnsupportedOperationException("Alpha is not supported by this drawable.");
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setColorFilter(final ColorFilter cf) {
-        throw new UnsupportedOperationException("ColorFilter is not supported by this drawable.");
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected void onBoundsChange(final Rect bounds) {
-        super.onBoundsChange(bounds);
-
-        final int mHeight = bounds.height();
-        final int mWidth = bounds.width();
-
-        numRectanglesHorizontal = (int)Math.ceil((mWidth / mRectangleSize));
-        numRectanglesVertical = (int)Math.ceil(mHeight / mRectangleSize);
-
-        generatePatternBitmap();
     }
 
     /**
@@ -128,5 +88,45 @@ public class AlphaPatternDrawable extends Drawable {
             }
             mVerticalStartWhite = !mVerticalStartWhite;
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int getOpacity() {
+        return 0;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void onBoundsChange(final Rect bounds) {
+        super.onBoundsChange(bounds);
+
+        final int mHeight = bounds.height();
+        final int mWidth = bounds.width();
+
+        numRectanglesHorizontal = (int) Math.ceil(mWidth / mRectangleSize);
+        numRectanglesVertical = (int) Math.ceil(mHeight / mRectangleSize);
+
+        generatePatternBitmap();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setAlpha(final int alpha) {
+        throw new UnsupportedOperationException("Alpha is not supported by this drawable.");
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setColorFilter(final ColorFilter cf) {
+        throw new UnsupportedOperationException("ColorFilter is not supported by this drawable.");
     }
 }

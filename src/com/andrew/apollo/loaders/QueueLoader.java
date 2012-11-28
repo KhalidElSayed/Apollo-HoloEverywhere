@@ -11,14 +11,14 @@
 
 package com.andrew.apollo.loaders;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import android.content.Context;
 import android.database.Cursor;
 
 import com.andrew.apollo.model.Song;
 import com.andrew.apollo.utils.Lists;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Used to return the current playlist or queue.
@@ -28,14 +28,25 @@ import java.util.List;
 public class QueueLoader extends WrappedAsyncTaskLoader<List<Song>> {
 
     /**
-     * The result
+     * Creates the {@link Cursor} used to run the query.
+     * 
+     * @param context The {@link Context} to use.
+     * @return The {@link Cursor} used to run the song query.
      */
-    private final ArrayList<Song> mSongList = Lists.newArrayList();
+    public static final Cursor makeQueueCursor(final Context context) {
+        final Cursor cursor = new NowPlayingCursor(context);
+        return cursor;
+    }
 
     /**
      * The {@link Cursor} used to run the query.
      */
     private NowPlayingCursor mCursor;
+
+    /**
+     * The result
+     */
+    private final ArrayList<Song> mSongList = Lists.newArrayList();
 
     /**
      * Constructor of <code>QueueLoader</code>
@@ -81,16 +92,5 @@ public class QueueLoader extends WrappedAsyncTaskLoader<List<Song>> {
             mCursor = null;
         }
         return mSongList;
-    }
-
-    /**
-     * Creates the {@link Cursor} used to run the query.
-     * 
-     * @param context The {@link Context} to use.
-     * @return The {@link Cursor} used to run the song query.
-     */
-    public static final Cursor makeQueueCursor(final Context context) {
-        final Cursor cursor = new NowPlayingCursor(context);
-        return cursor;
     }
 }

@@ -64,12 +64,12 @@ public class FrameLayoutWithOverlay extends FrameLayout {
     }
 
     /** Delegate to overlay. */
-    public void setOverlayOnClickListener(final OnClickListener listener) {
-        mOverlay.setOverlayOnClickListener(listener);
+    public void setOverlayClickable(final boolean clickable) {
+        mOverlay.setOverlayClickable(clickable);
     }
 
     /** Delegate to overlay. */
-    public void setOverlayClickable(final boolean clickable) {
-        mOverlay.setOverlayClickable(clickable);
+    public void setOverlayOnClickListener(final OnClickListener listener) {
+        mOverlay.setOverlayOnClickListener(listener);
     }
 }

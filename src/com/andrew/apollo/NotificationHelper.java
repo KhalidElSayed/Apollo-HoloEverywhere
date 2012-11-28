@@ -40,19 +40,9 @@ public class NotificationHelper {
     private static final int APOLLO_MUSIC_SERVICE = 1;
 
     /**
-     * NotificationManager
+     * API 16+ bigContentView
      */
-    private final NotificationManager mNotificationManager;
-
-    /**
-     * Context
-     */
-    private final MusicPlaybackService mService;
-
-    /**
-     * Custom notification layout
-     */
-    private RemoteViews mNotificationTemplate;
+    private RemoteViews mExpandedView;
 
     /**
      * The Notification
@@ -60,9 +50,19 @@ public class NotificationHelper {
     private Notification mNotification = null;
 
     /**
-     * API 16+ bigContentView
+     * NotificationManager
      */
-    private RemoteViews mExpandedView;
+    private final NotificationManager mNotificationManager;
+
+    /**
+     * Custom notification layout
+     */
+    private RemoteViews mNotificationTemplate;
+
+    /**
+     * Context
+     */
+    private final MusicPlaybackService mService;
 
     /**
      * Constructor of <code>NotificationHelper</code>
@@ -71,7 +71,7 @@ public class NotificationHelper {
      */
     public NotificationHelper(final MusicPlaybackService service) {
         mService = service;
-        mNotificationManager = (NotificationManager)service
+        mNotificationManager = (NotificationManager) service
                 .getSystemService(Context.NOTIFICATION_SERVICE);
     }
 
@@ -93,8 +93,7 @@ public class NotificationHelper {
             mNotification = new NotificationCompat.Builder(mService)
                     .setSmallIcon(R.drawable.stat_notify_music)
                     .setContentIntent(getPendingIntent())
-                    .setPriority(Notification.PRIORITY_DEFAULT).setContent(mNotificationTemplate)
-                    .build();
+                    .setContent(mNotificationTemplate).getNotification();
             // Control playback from the notification
             initPlaybackActions();
             if (ApolloUtils.hasJellyBean()) {
@@ -122,6 +121,14 @@ public class NotificationHelper {
             mNotification.contentIntent = getPendingIntent();
             mService.startForeground(APOLLO_MUSIC_SERVICE, mNotification);
         }
+    }
+
+    /**
+     * Open to the now playing screen
+     */
+    private PendingIntent getPendingIntent() {
+        return PendingIntent.getActivity(mService, 0, new Intent("com.andrew.apollo.AUDIO_PLAYER")
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), 0);
     }
 
     /**
@@ -153,11 +160,32 @@ public class NotificationHelper {
     }
 
     /**
-     * Open to the now playing screen
+     * Sets the track name, artist name, and album art in the normal layout
      */
-    private PendingIntent getPendingIntent() {
-        return PendingIntent.getActivity(mService, 0, new Intent("com.andrew.apollo.AUDIO_PLAYER")
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), 0);
+    private void initCollapsedLayout(final String trackName, final String artistName,
+            final Bitmap albumArt) {
+        // Track name (line one)
+        mNotificationTemplate.setTextViewText(R.id.notification_base_line_one, trackName);
+        // Artist name (line two)
+        mNotificationTemplate.setTextViewText(R.id.notification_base_line_two, artistName);
+        // Album art
+        mNotificationTemplate.setImageViewBitmap(R.id.notification_base_image, albumArt);
+    }
+
+    /**
+     * Sets the track name, album name, artist name, and album art in the
+     * expanded layout
+     */
+    private void initExpandedLayout(final String trackName, final String artistName,
+            final String albumName, final Bitmap albumArt) {
+        // Track name (line one)
+        mExpandedView.setTextViewText(R.id.notification_expanded_base_line_one, trackName);
+        // Album name (line two)
+        mExpandedView.setTextViewText(R.id.notification_expanded_base_line_two, albumName);
+        // Artist name (line three)
+        mExpandedView.setTextViewText(R.id.notification_expanded_base_line_three, artistName);
+        // Album art
+        mExpandedView.setImageViewBitmap(R.id.notification_expanded_base_image, albumArt);
     }
 
     /**
@@ -248,35 +276,6 @@ public class NotificationHelper {
                 break;
         }
         return null;
-    }
-
-    /**
-     * Sets the track name, artist name, and album art in the normal layout
-     */
-    private void initCollapsedLayout(final String trackName, final String artistName,
-            final Bitmap albumArt) {
-        // Track name (line one)
-        mNotificationTemplate.setTextViewText(R.id.notification_base_line_one, trackName);
-        // Artist name (line two)
-        mNotificationTemplate.setTextViewText(R.id.notification_base_line_two, artistName);
-        // Album art
-        mNotificationTemplate.setImageViewBitmap(R.id.notification_base_image, albumArt);
-    }
-
-    /**
-     * Sets the track name, album name, artist name, and album art in the
-     * expanded layout
-     */
-    private void initExpandedLayout(final String trackName, final String artistName,
-            final String albumName, final Bitmap albumArt) {
-        // Track name (line one)
-        mExpandedView.setTextViewText(R.id.notification_expanded_base_line_one, trackName);
-        // Album name (line two)
-        mExpandedView.setTextViewText(R.id.notification_expanded_base_line_two, albumName);
-        // Artist name (line three)
-        mExpandedView.setTextViewText(R.id.notification_expanded_base_line_three, artistName);
-        // Album art
-        mExpandedView.setImageViewBitmap(R.id.notification_expanded_base_image, albumArt);
     }
 
 }

@@ -11,8 +11,12 @@
 
 package com.andrew.apollo.menu;
 
-import android.app.AlertDialog;
-import android.app.Dialog;
+import org.holoeverywhere.app.AlertDialog;
+import org.holoeverywhere.app.Dialog;
+import org.holoeverywhere.app.DialogFragment;
+import org.holoeverywhere.widget.Button;
+import org.holoeverywhere.widget.EditText;
+
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
@@ -21,10 +25,7 @@ import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.Button;
-import android.widget.EditText;
 
-import com.actionbarsherlock.app.SherlockDialogFragment;
 import com.andrew.apollo.R;
 import com.andrew.apollo.utils.MusicUtils;
 
@@ -33,22 +34,68 @@ import com.andrew.apollo.utils.MusicUtils;
  * 
  * @author Andrew Neal (andrewdneal@gmail.com)
  */
-public abstract class BasePlaylistDialog extends SherlockDialogFragment {
+public abstract class BasePlaylistDialog extends DialogFragment {
 
-    /* The actual dialog */
-    protected AlertDialog mPlaylistDialog;
+    /* The default edit text text */
+    protected String mDefaultname;
 
     /* Used to make new playlist names */
     protected EditText mPlaylist;
 
-    /* The dialog save button */
-    protected Button mSaveButton;
+    /* The actual dialog */
+    protected AlertDialog mPlaylistDialog;
 
     /* The dialog prompt */
     protected String mPrompt;
 
-    /* The default edit text text */
-    protected String mDefaultname;
+    /* The dialog save button */
+    protected Button mSaveButton;
+
+    /**
+     * Simple {@link TextWatcher}
+     */
+    private final TextWatcher mTextWatcher = new TextWatcher() {
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void afterTextChanged(final Editable s) {
+            /* Nothing to do */
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void beforeTextChanged(final CharSequence s, final int start, final int count,
+                final int after) {
+            /* Nothing to do */
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public void onTextChanged(final CharSequence s, final int start, final int before,
+                final int count) {
+            onTextChangedListener();
+        }
+    };
+
+    /**
+     * Closes the soft keyboard
+     */
+    protected void closeKeyboard() {
+        final InputMethodManager mInputMethodManager = (InputMethodManager) getSupportActivity()
+                .getSystemService(Context.INPUT_METHOD_SERVICE);
+        mInputMethodManager.hideSoftInputFromWindow(mPlaylist.getWindowToken(), 0);
+    }
+
+    /**
+     * Initializes the prompt and default name
+     */
+    public abstract void initObjects(Bundle savedInstanceState);
 
     /**
      * {@inheritDoc}
@@ -56,16 +103,16 @@ public abstract class BasePlaylistDialog extends SherlockDialogFragment {
     @Override
     public Dialog onCreateDialog(final Bundle savedInstanceState) {
         // Initialize the alert dialog
-        mPlaylistDialog = new AlertDialog.Builder(getSherlockActivity()).create();
+        mPlaylistDialog = new AlertDialog.Builder(getSupportActivity()).create();
         // Initialize the edit text
-        mPlaylist = new EditText(getSherlockActivity());
+        mPlaylist = new EditText(getSupportActivity());
         // To show the "done" button on the soft keyboard
         mPlaylist.setSingleLine(true);
         // All caps
         mPlaylist.setInputType(mPlaylist.getInputType() | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
                 | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
         // Set the save button action
-        mPlaylistDialog.setButton(Dialog.BUTTON_POSITIVE, getString(R.string.save),
+        mPlaylistDialog.setButton(DialogInterface.BUTTON_POSITIVE, getString(R.string.save),
                 new OnClickListener() {
 
                     @Override
@@ -76,7 +123,7 @@ public abstract class BasePlaylistDialog extends SherlockDialogFragment {
                     }
                 });
         // Set the cancel button action
-        mPlaylistDialog.setButton(Dialog.BUTTON_NEGATIVE, getString(R.string.cancel),
+        mPlaylistDialog.setButton(DialogInterface.BUTTON_NEGATIVE, getString(R.string.cancel),
                 new OnClickListener() {
 
                     @Override
@@ -111,62 +158,6 @@ public abstract class BasePlaylistDialog extends SherlockDialogFragment {
     }
 
     /**
-     * Opens the soft keyboard
-     */
-    protected void openKeyboard() {
-        final InputMethodManager mInputMethodManager = (InputMethodManager)getSherlockActivity()
-                .getSystemService(Context.INPUT_METHOD_SERVICE);
-        mInputMethodManager.toggleSoftInputFromWindow(mPlaylist.getApplicationWindowToken(),
-                InputMethodManager.SHOW_FORCED, 0);
-    }
-
-    /**
-     * Closes the soft keyboard
-     */
-    protected void closeKeyboard() {
-        final InputMethodManager mInputMethodManager = (InputMethodManager)getSherlockActivity()
-                .getSystemService(Context.INPUT_METHOD_SERVICE);
-        mInputMethodManager.hideSoftInputFromWindow(mPlaylist.getWindowToken(), 0);
-    }
-
-    /**
-     * Simple {@link TextWatcher}
-     */
-    private final TextWatcher mTextWatcher = new TextWatcher() {
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void onTextChanged(final CharSequence s, final int start, final int before,
-                final int count) {
-            onTextChangedListener();
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void afterTextChanged(final Editable s) {
-            /* Nothing to do */
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void beforeTextChanged(final CharSequence s, final int start, final int count,
-                final int after) {
-            /* Nothing to do */
-        }
-    };
-
-    /**
-     * Initializes the prompt and default name
-     */
-    public abstract void initObjects(Bundle savedInstanceState);
-
-    /**
      * Called when the save button of our {@link AlertDialog} is pressed
      */
     public abstract void onSaveClick();
@@ -175,5 +166,15 @@ public abstract class BasePlaylistDialog extends SherlockDialogFragment {
      * Called in our {@link TextWatcher} during a text change
      */
     public abstract void onTextChangedListener();
+
+    /**
+     * Opens the soft keyboard
+     */
+    protected void openKeyboard() {
+        final InputMethodManager mInputMethodManager = (InputMethodManager) getSupportActivity()
+                .getSystemService(Context.INPUT_METHOD_SERVICE);
+        mInputMethodManager.toggleSoftInputFromWindow(mPlaylist.getApplicationWindowToken(),
+                InputMethodManager.SHOW_FORCED, 0);
+    }
 
 }

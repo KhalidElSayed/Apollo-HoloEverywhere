@@ -11,24 +11,27 @@
 
 package com.andrew.apollo.ui.fragments;
 
+import java.util.List;
+
+import org.holoeverywhere.LayoutInflater;
+import org.holoeverywhere.app.Fragment;
+
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
 import android.support.v4.content.Loader;
 import android.text.TextUtils;
-import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.SubMenu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.AdapterView.OnItemClickListener;
 
-import com.actionbarsherlock.app.SherlockFragment;
+import com.actionbarsherlock.view.ContextMenu;
+import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuInflater;
+import com.actionbarsherlock.view.MenuItem;
+import com.actionbarsherlock.view.SubMenu;
 import com.andrew.apollo.R;
 import com.andrew.apollo.adapters.SongAdapter;
 import com.andrew.apollo.dragdrop.DragSortListView;
@@ -46,14 +49,12 @@ import com.andrew.apollo.utils.MusicUtils;
 import com.andrew.apollo.utils.NavUtils;
 import com.viewpagerindicator.TitlePageIndicator;
 
-import java.util.List;
-
 /**
  * This class is used to display all of the songs in the queue.
  * 
  * @author Andrew Neal (andrewdneal@gmail.com)
  */
-public class QueueFragment extends SherlockFragment implements LoaderCallbacks<List<Song>>,
+public class QueueFragment extends Fragment implements LoaderCallbacks<List<Song>>,
         OnItemClickListener, DropListener, RemoveListener, DragScrollProfile {
 
     /**
@@ -77,9 +78,9 @@ public class QueueFragment extends SherlockFragment implements LoaderCallbacks<L
     private DragSortListView mListView;
 
     /**
-     * Represents a song
+     * Id of a context menu item
      */
-    private Song mSong;
+    private long mSelectedId;
 
     /**
      * Position of a context menu item
@@ -87,9 +88,9 @@ public class QueueFragment extends SherlockFragment implements LoaderCallbacks<L
     private int mSelectedPosition;
 
     /**
-     * Id of a context menu item
+     * Represents a song
      */
-    private long mSelectedId;
+    private Song mSong;
 
     /**
      * Song, album, and artist name used in the context menu
@@ -106,10 +107,179 @@ public class QueueFragment extends SherlockFragment implements LoaderCallbacks<L
      * {@inheritDoc}
      */
     @Override
+    public void drop(final int from, final int to) {
+        mSong = mAdapter.getItem(from);
+        mAdapter.remove(mSong);
+        mAdapter.insert(mSong, to);
+        mAdapter.notifyDataSetChanged();
+        MusicUtils.moveQueueItem(from, to);
+        // Build the cache
+        mAdapter.buildCache();
+    }
+
+    /**
+     * @return The position of an item in the list based on the name of the
+     *         currently playing song.
+     */
+    private int getItemPositionBySong() {
+        final String trackName = String.valueOf(MusicUtils.getCurrentAudioId());
+        if (mAdapter == null || TextUtils.isEmpty(trackName)) {
+            return 0;
+        }
+        for (int i = 0; i < mAdapter.getCount(); i++) {
+            if (mAdapter.getItem(i).mSongId.equals(trackName)) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public float getSpeed(final float w, final long t) {
+        if (w > 0.8f) {
+            return mAdapter.getCount() / 0.001f;
+        } else {
+            return 10.0f * w;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onActivityCreated(final Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+        // Enable the options menu
+        setHasOptionsMenu(true);
+        // Start the loader
+        getLoaderManager().initLoader(LOADER, null, this);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean onContextItemSelected(final MenuItem item) {
+        if (item.getGroupId() == GROUP_ID) {
+            switch (item.getItemId()) {
+                case FragmentMenuItems.PLAY_NEXT:
+                    NowPlayingCursor queue = (NowPlayingCursor) QueueLoader
+                            .makeQueueCursor(getSupportActivity());
+                    queue.removeItem(mSelectedPosition);
+                    queue.close();
+                    queue = null;
+                    MusicUtils.playNext(new long[] {
+                            mSelectedId
+                    });
+                    getLoaderManager().restartLoader(LOADER, null, this);
+                    return true;
+                case FragmentMenuItems.ADD_TO_QUEUE:
+                    MusicUtils.addToQueue(getSupportActivity(), new long[] {
+                            mSelectedId
+                    });
+                    return true;
+                case FragmentMenuItems.ADD_TO_FAVORITES:
+                    FavoritesStore.getInstance(getSupportActivity()).addSongId(
+                            Long.valueOf(mSelectedId), mSongName, mAlbumName, mArtistName);
+                    return true;
+                case FragmentMenuItems.NEW_PLAYLIST:
+                    CreateNewPlaylist.getInstance(new long[] {
+                            mSelectedId
+                    }).show(getFragmentManager(), "CreatePlaylist");
+                    return true;
+                case FragmentMenuItems.PLAYLIST_SELECTED:
+                    final long mPlaylistId = item.getIntent().getLongExtra("playlist", 0);
+                    MusicUtils.addToPlaylist(getSupportActivity(), new long[] {
+                            mSelectedId
+                    }, mPlaylistId);
+                    return true;
+                case FragmentMenuItems.MORE_BY_ARTIST:
+                    NavUtils.openArtistProfile(getSupportActivity(), mArtistName);
+                    return true;
+                case FragmentMenuItems.USE_AS_RINGTONE:
+                    MusicUtils.setRingtone(getSupportActivity(), mSelectedId);
+                    return true;
+                    // case FragmentMenuItems.DELETE:
+                    // return true;
+                default:
+                    break;
+            }
+        }
+        return super.onContextItemSelected(item);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         // Create the adpater
-        mAdapter = new SongAdapter(getSherlockActivity(), R.layout.edit_track_list_item);
+        mAdapter = new SongAdapter(getSupportActivity(), R.layout.edit_track_list_item);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onCreateContextMenu(final ContextMenu menu, final View v,
+            final ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+        // Get the position of the selected item
+        final AdapterContextMenuInfo info = (AdapterContextMenuInfo) menuInfo;
+        mSelectedPosition = info.position;
+        // Creat a new song
+        mSong = mAdapter.getItem(mSelectedPosition);
+        mSelectedId = Long.valueOf(mSong.mSongId);
+        mSongName = mSong.mSongName;
+        mAlbumName = mSong.mAlbumName;
+        mArtistName = mSong.mArtistName;
+
+        // Play the song next
+        menu.add(GROUP_ID, FragmentMenuItems.PLAY_NEXT, Menu.NONE,
+                getString(R.string.context_menu_play_next));
+
+        // Add the song to the queue
+        menu.add(GROUP_ID, FragmentMenuItems.ADD_TO_QUEUE, Menu.NONE,
+                getString(R.string.add_to_queue));
+
+        // Add the song to a playlist
+        final SubMenu subMenu = menu.addSubMenu(GROUP_ID, FragmentMenuItems.ADD_TO_PLAYLIST,
+                Menu.NONE, R.string.add_to_playlist);
+        MusicUtils.makePlaylistMenu(getSupportActivity(), GROUP_ID, subMenu, true);
+
+        // View more content by the song artist
+        menu.add(GROUP_ID, FragmentMenuItems.MORE_BY_ARTIST, Menu.NONE,
+                getString(R.string.context_menu_more_by_artist));
+
+        // Make the song a ringtone
+        menu.add(GROUP_ID, FragmentMenuItems.USE_AS_RINGTONE, Menu.NONE,
+                getString(R.string.context_menu_use_as_ringtone));
+
+        // Delete the song
+        // menu.add(GROUP_ID, FragmentMenuItems.DELETE, Menu.NONE,
+        // getString(R.string.context_menu_delete));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Loader<List<Song>> onCreateLoader(final int id, final Bundle args) {
+        return new QueueLoader(getSupportActivity());
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onCreateOptionsMenu(final com.actionbarsherlock.view.Menu menu,
+            final MenuInflater inflater) {
+        inflater.inflate(R.menu.queue, menu);
+        super.onCreateOptionsMenu(menu, inflater);
     }
 
     /**
@@ -119,9 +289,9 @@ public class QueueFragment extends SherlockFragment implements LoaderCallbacks<L
     public View onCreateView(final LayoutInflater inflater, final ViewGroup container,
             final Bundle savedInstanceState) {
         // The View for the fragment's UI
-        final ViewGroup rootView = (ViewGroup)inflater.inflate(R.layout.list_base, null);
+        final ViewGroup rootView = (ViewGroup) inflater.inflate(R.layout.list_base, null);
         // Initialize the list
-        mListView = (DragSortListView)rootView.findViewById(R.id.list_base);
+        mListView = (DragSortListView) rootView.findViewById(R.id.list_base);
         // Set the data behind the list
         mListView.setAdapter(mAdapter);
         // Release any references to the recycled Views
@@ -143,148 +313,6 @@ public class QueueFragment extends SherlockFragment implements LoaderCallbacks<L
      * {@inheritDoc}
      */
     @Override
-    public void onActivityCreated(final Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
-        // Enable the options menu
-        setHasOptionsMenu(true);
-        // Start the loader
-        getLoaderManager().initLoader(LOADER, null, this);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onCreateOptionsMenu(final com.actionbarsherlock.view.Menu menu,
-            final MenuInflater inflater) {
-        inflater.inflate(R.menu.queue, menu);
-        super.onCreateOptionsMenu(menu, inflater);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean onOptionsItemSelected(final com.actionbarsherlock.view.MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.menu_save_queue:
-                NowPlayingCursor queue = (NowPlayingCursor)QueueLoader
-                        .makeQueueCursor(getSherlockActivity());
-                CreateNewPlaylist.getInstance(MusicUtils.getSongListForCursor(queue)).show(
-                        getFragmentManager(), "CreatePlaylist");
-                queue.close();
-                queue = null;
-                return true;
-            case R.id.menu_clear_queue:
-                MusicUtils.clearQueue();
-                NavUtils.goHome(getSherlockActivity());
-                return true;
-            default:
-                break;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onCreateContextMenu(final ContextMenu menu, final View v,
-            final ContextMenuInfo menuInfo) {
-        super.onCreateContextMenu(menu, v, menuInfo);
-        // Get the position of the selected item
-        final AdapterContextMenuInfo info = (AdapterContextMenuInfo)menuInfo;
-        mSelectedPosition = info.position;
-        // Creat a new song
-        mSong = mAdapter.getItem(mSelectedPosition);
-        mSelectedId = Long.valueOf(mSong.mSongId);
-        mSongName = mSong.mSongName;
-        mAlbumName = mSong.mAlbumName;
-        mArtistName = mSong.mArtistName;
-
-        // Play the song next
-        menu.add(GROUP_ID, FragmentMenuItems.PLAY_NEXT, Menu.NONE,
-                getString(R.string.context_menu_play_next));
-
-        // Add the song to the queue
-        menu.add(GROUP_ID, FragmentMenuItems.ADD_TO_QUEUE, Menu.NONE,
-                getString(R.string.add_to_queue));
-
-        // Add the song to a playlist
-        final SubMenu subMenu = menu.addSubMenu(GROUP_ID, FragmentMenuItems.ADD_TO_PLAYLIST,
-                Menu.NONE, R.string.add_to_playlist);
-        MusicUtils.makePlaylistMenu(getSherlockActivity(), GROUP_ID, subMenu, true);
-
-        // View more content by the song artist
-        menu.add(GROUP_ID, FragmentMenuItems.MORE_BY_ARTIST, Menu.NONE,
-                getString(R.string.context_menu_more_by_artist));
-
-        // Make the song a ringtone
-        menu.add(GROUP_ID, FragmentMenuItems.USE_AS_RINGTONE, Menu.NONE,
-                getString(R.string.context_menu_use_as_ringtone));
-
-        // Delete the song
-        // menu.add(GROUP_ID, FragmentMenuItems.DELETE, Menu.NONE,
-        // getString(R.string.context_menu_delete));
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean onContextItemSelected(final android.view.MenuItem item) {
-        if (item.getGroupId() == GROUP_ID) {
-            switch (item.getItemId()) {
-                case FragmentMenuItems.PLAY_NEXT:
-                    NowPlayingCursor queue = (NowPlayingCursor)QueueLoader
-                            .makeQueueCursor(getSherlockActivity());
-                    queue.removeItem(mSelectedPosition);
-                    queue.close();
-                    queue = null;
-                    MusicUtils.playNext(new long[] {
-                        mSelectedId
-                    });
-                    getLoaderManager().restartLoader(LOADER, null, this);
-                    return true;
-                case FragmentMenuItems.ADD_TO_QUEUE:
-                    MusicUtils.addToQueue(getSherlockActivity(), new long[] {
-                        mSelectedId
-                    });
-                    return true;
-                case FragmentMenuItems.ADD_TO_FAVORITES:
-                    FavoritesStore.getInstance(getSherlockActivity()).addSongId(
-                            Long.valueOf(mSelectedId), mSongName, mAlbumName, mArtistName);
-                    return true;
-                case FragmentMenuItems.NEW_PLAYLIST:
-                    CreateNewPlaylist.getInstance(new long[] {
-                        mSelectedId
-                    }).show(getFragmentManager(), "CreatePlaylist");
-                    return true;
-                case FragmentMenuItems.PLAYLIST_SELECTED:
-                    final long mPlaylistId = item.getIntent().getLongExtra("playlist", 0);
-                    MusicUtils.addToPlaylist(getSherlockActivity(), new long[] {
-                        mSelectedId
-                    }, mPlaylistId);
-                    return true;
-                case FragmentMenuItems.MORE_BY_ARTIST:
-                    NavUtils.openArtistProfile(getSherlockActivity(), mArtistName);
-                    return true;
-                case FragmentMenuItems.USE_AS_RINGTONE:
-                    MusicUtils.setRingtone(getSherlockActivity(), mSelectedId);
-                    return true;
-                    // case FragmentMenuItems.DELETE:
-                    // return true;
-                default:
-                    break;
-            }
-        }
-        return super.onContextItemSelected(item);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void onItemClick(final AdapterView<?> parent, final View view, final int position,
             final long id) {
         // When selecting a track from the queue, just jump there instead of
@@ -297,8 +325,9 @@ public class QueueFragment extends SherlockFragment implements LoaderCallbacks<L
      * {@inheritDoc}
      */
     @Override
-    public Loader<List<Song>> onCreateLoader(final int id, final Bundle args) {
-        return new QueueLoader(getSherlockActivity());
+    public void onLoaderReset(final Loader<List<Song>> loader) {
+        // Clear the data in the adapter
+        mAdapter.unload();
     }
 
     /**
@@ -325,20 +354,32 @@ public class QueueFragment extends SherlockFragment implements LoaderCallbacks<L
      * {@inheritDoc}
      */
     @Override
-    public void onLoaderReset(final Loader<List<Song>> loader) {
-        // Clear the data in the adapter
-        mAdapter.unload();
+    public boolean onOptionsItemSelected(final com.actionbarsherlock.view.MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_save_queue:
+                NowPlayingCursor queue = (NowPlayingCursor) QueueLoader
+                        .makeQueueCursor(getSupportActivity());
+                CreateNewPlaylist.getInstance(MusicUtils.getSongListForCursor(queue)).show(
+                        getFragmentManager(), "CreatePlaylist");
+                queue.close();
+                queue = null;
+                return true;
+            case R.id.menu_clear_queue:
+                MusicUtils.clearQueue();
+                NavUtils.goHome(getSupportActivity());
+                return true;
+            default:
+                break;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     /**
-     * {@inheritDoc}
+     * Called to restart the loader callbacks
      */
-    @Override
-    public float getSpeed(final float w, final long t) {
-        if (w > 0.8f) {
-            return mAdapter.getCount() / 0.001f;
-        } else {
-            return 10.0f * w;
+    public void refreshQueue() {
+        if (isAdded()) {
+            getLoaderManager().restartLoader(LOADER, null, this);
         }
     }
 
@@ -356,20 +397,6 @@ public class QueueFragment extends SherlockFragment implements LoaderCallbacks<L
     }
 
     /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void drop(final int from, final int to) {
-        mSong = mAdapter.getItem(from);
-        mAdapter.remove(mSong);
-        mAdapter.insert(mSong, to);
-        mAdapter.notifyDataSetChanged();
-        MusicUtils.moveQueueItem(from, to);
-        // Build the cache
-        mAdapter.buildCache();
-    }
-
-    /**
      * Scrolls the list to the currently playing song when the user touches the
      * header in the {@link TitlePageIndicator}.
      */
@@ -378,32 +405,6 @@ public class QueueFragment extends SherlockFragment implements LoaderCallbacks<L
 
         if (currentSongPosition != 0) {
             mListView.setSelection(currentSongPosition);
-        }
-    }
-
-    /**
-     * @return The position of an item in the list based on the name of the
-     *         currently playing song.
-     */
-    private int getItemPositionBySong() {
-        final String trackName = String.valueOf(MusicUtils.getCurrentAudioId());
-        if (mAdapter == null || TextUtils.isEmpty(trackName)) {
-            return 0;
-        }
-        for (int i = 0; i < mAdapter.getCount(); i++) {
-            if (mAdapter.getItem(i).mSongId.equals(trackName)) {
-                return i;
-            }
-        }
-        return 0;
-    }
-
-    /**
-     * Called to restart the loader callbacks
-     */
-    public void refreshQueue() {
-        if (isAdded()) {
-            getLoaderManager().restartLoader(LOADER, null, this);
         }
     }
 }

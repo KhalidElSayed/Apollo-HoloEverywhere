@@ -11,9 +11,10 @@
 
 package com.andrew.apollo.widgets.theme;
 
+import org.holoeverywhere.widget.FrameLayout;
+
 import android.content.Context;
 import android.util.AttributeSet;
-import android.widget.FrameLayout;
 
 import com.andrew.apollo.utils.ThemeUtils;
 

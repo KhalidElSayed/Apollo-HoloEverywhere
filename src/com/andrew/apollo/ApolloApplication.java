@@ -11,16 +11,17 @@
 
 package com.andrew.apollo;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import org.holoeverywhere.app.Application;
+
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
-import android.app.Application;
 import android.os.StrictMode;
 
 import com.andrew.apollo.cache.ImageCache;
 import com.andrew.apollo.utils.ApolloUtils;
-
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Used to turn off logging for jaudiotagger and free up memory when
@@ -31,6 +32,22 @@ import java.util.logging.Logger;
  */
 @SuppressLint("NewApi")
 public class ApolloApplication extends Application {
+
+    @TargetApi(11)
+    private void enableStrictMode() {
+        if (ApolloUtils.hasGingerbread() && BuildConfig.DEBUG) {
+            final StrictMode.ThreadPolicy.Builder threadPolicyBuilder = new StrictMode.ThreadPolicy.Builder()
+                    .detectAll().penaltyLog();
+            final StrictMode.VmPolicy.Builder vmPolicyBuilder = new StrictMode.VmPolicy.Builder()
+                    .detectAll().penaltyLog();
+
+            if (ApolloUtils.hasHoneycomb()) {
+                threadPolicyBuilder.penaltyFlashScreen();
+            }
+            StrictMode.setThreadPolicy(threadPolicyBuilder.build());
+            StrictMode.setVmPolicy(vmPolicyBuilder.build());
+        }
+    }
 
     /**
      * {@inheritDoc}
@@ -50,21 +67,5 @@ public class ApolloApplication extends Application {
     public void onLowMemory() {
         ImageCache.getInstance(this).evictAll();
         super.onLowMemory();
-    }
-
-    @TargetApi(11)
-    private void enableStrictMode() {
-        if (ApolloUtils.hasGingerbread() && BuildConfig.DEBUG) {
-            final StrictMode.ThreadPolicy.Builder threadPolicyBuilder = new StrictMode.ThreadPolicy.Builder()
-                    .detectAll().penaltyLog();
-            final StrictMode.VmPolicy.Builder vmPolicyBuilder = new StrictMode.VmPolicy.Builder()
-                    .detectAll().penaltyLog();
-
-            if (ApolloUtils.hasHoneycomb()) {
-                threadPolicyBuilder.penaltyFlashScreen();
-            }
-            StrictMode.setThreadPolicy(threadPolicyBuilder.build());
-            StrictMode.setVmPolicy(vmPolicyBuilder.build());
-        }
     }
 }

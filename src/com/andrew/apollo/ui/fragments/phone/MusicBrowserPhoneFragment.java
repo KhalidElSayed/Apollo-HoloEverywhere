@@ -11,14 +11,14 @@
 
 package com.andrew.apollo.ui.fragments.phone;
 
+import org.holoeverywhere.LayoutInflater;
+import org.holoeverywhere.app.Fragment;
+
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.actionbarsherlock.app.SherlockFragment;
 import com.actionbarsherlock.view.Menu;
 import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
@@ -48,8 +48,20 @@ import com.viewpagerindicator.TitlePageIndicator.OnCenterItemClickListener;
  *        Apollo for a couple of weeks or so before merging it with CM.
  * @author Andrew Neal (andrewdneal@gmail.com)
  */
-public class MusicBrowserPhoneFragment extends SherlockFragment implements
+public class MusicBrowserPhoneFragment extends Fragment implements
         OnCenterItemClickListener {
+
+    /**
+     * VP's adapter
+     */
+    private PagerAdapter mPagerAdapter;
+
+    private PreferenceUtils mPreferences;
+
+    /**
+     * Theme resources
+     */
+    private ThemeUtils mResources;
 
     /**
      * Pager
@@ -57,67 +69,37 @@ public class MusicBrowserPhoneFragment extends SherlockFragment implements
     private ViewPager mViewPager;
 
     /**
-     * VP's adapter
-     */
-    private PagerAdapter mPagerAdapter;
-
-    /**
-     * Theme resources
-     */
-    private ThemeUtils mResources;
-
-    private PreferenceUtils mPreferences;
-
-    /**
      * Empty constructor as per the {@link Fragment} documentation
      */
     public MusicBrowserPhoneFragment() {
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void onCreate(final Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        // Get the preferences
-        mPreferences = PreferenceUtils.getInstace(getSherlockActivity());
+    private AlbumFragment getAlbumFragment() {
+        return (AlbumFragment) mPagerAdapter.getFragment(3);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public View onCreateView(final LayoutInflater inflater, final ViewGroup container,
-            final Bundle savedInstanceState) {
-        // The View for the fragment's UI
-        final ViewGroup rootView = (ViewGroup)inflater.inflate(
-                R.layout.fragment_music_browser_phone, container, false);
+    private ArtistFragment getArtistFragment() {
+        return (ArtistFragment) mPagerAdapter.getFragment(2);
+    }
 
-        // Initialize the adapter
-        mPagerAdapter = new PagerAdapter(getSherlockActivity());
-        final MusicFragments[] mFragments = MusicFragments.values();
-        for (final MusicFragments mFragment : mFragments) {
-            mPagerAdapter.add(mFragment.getFragmentClass(), null);
-        }
+    private SongFragment getSongFragment() {
+        return (SongFragment) mPagerAdapter.getFragment(4);
+    }
 
-        // Initialize the ViewPager
-        mViewPager = (ViewPager)rootView.findViewById(R.id.fragment_home_phone_pager);
-        // Attch the adapter
-        mViewPager.setAdapter(mPagerAdapter);
-        // Offscreen pager loading limit
-        mViewPager.setOffscreenPageLimit(mPagerAdapter.getCount() - 1);
-        // Start on the last page the user was on
-        mViewPager.setCurrentItem(mPreferences.getStartPage());
+    private boolean isAlbumPage() {
+        return mViewPager.getCurrentItem() == 3;
+    }
 
-        // Initialze the TPI
-        final TitlePageIndicator pageIndicator = (TitlePageIndicator)rootView
-                .findViewById(R.id.fragment_home_phone_pager_titles);
-        // Attach the ViewPager
-        pageIndicator.setViewPager(mViewPager);
-        // Scroll to the current artist, album, or song
-        pageIndicator.setOnCenterItemClickListener(this);
-        return rootView;
+    private boolean isArtistPage() {
+        return mViewPager.getCurrentItem() == 2;
+    }
+
+    private boolean isRecentPage() {
+        return mViewPager.getCurrentItem() == 1;
+    }
+
+    private boolean isSongPage() {
+        return mViewPager.getCurrentItem() == 4;
     }
 
     /**
@@ -127,7 +109,7 @@ public class MusicBrowserPhoneFragment extends SherlockFragment implements
     public void onActivityCreated(final Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
         // Initialze the theme resources
-        mResources = new ThemeUtils(getSherlockActivity());
+        mResources = new ThemeUtils(getSupportActivity());
         // Enable the options menu
         setHasOptionsMenu(true);
     }
@@ -136,19 +118,27 @@ public class MusicBrowserPhoneFragment extends SherlockFragment implements
      * {@inheritDoc}
      */
     @Override
-    public void onPause() {
-        super.onPause();
-        // Save the last page the use was on
-        mPreferences.setStartPage(mViewPager.getCurrentItem());
+    public void onCenterItemClick(final int position) {
+        // If on the artist fragment, scrolls to the current artist
+        if (position == 2) {
+            getArtistFragment().scrollToCurrentArtist();
+            // If on the album fragment, scrolls to the current album
+        } else if (position == 3) {
+            getAlbumFragment().scrollToCurrentAlbum();
+            // If on the song fragment, scrolls to the current song
+        } else if (position == 4) {
+            getSongFragment().scrollToCurrentSong();
+        }
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void onPrepareOptionsMenu(final Menu menu) {
-        super.onPrepareOptionsMenu(menu);
-        mResources.setFavoriteIcon(menu);
+    public void onCreate(final Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        // Get the preferences
+        mPreferences = PreferenceUtils.getInstace(getSupportActivity());
     }
 
     /**
@@ -179,17 +169,53 @@ public class MusicBrowserPhoneFragment extends SherlockFragment implements
      * {@inheritDoc}
      */
     @Override
+    public View onCreateView(final LayoutInflater inflater, final ViewGroup container,
+            final Bundle savedInstanceState) {
+        // The View for the fragment's UI
+        final ViewGroup rootView = (ViewGroup) inflater.inflate(
+                R.layout.fragment_music_browser_phone, container, false);
+
+        // Initialize the adapter
+        mPagerAdapter = new PagerAdapter(getSupportActivity());
+        final MusicFragments[] mFragments = MusicFragments.values();
+        for (final MusicFragments mFragment : mFragments) {
+            mPagerAdapter.add(mFragment.getFragmentClass(), null);
+        }
+
+        // Initialize the ViewPager
+        mViewPager = (ViewPager) rootView.findViewById(R.id.fragment_home_phone_pager);
+        // Attch the adapter
+        mViewPager.setAdapter(mPagerAdapter);
+        // Offscreen pager loading limit
+        mViewPager.setOffscreenPageLimit(mPagerAdapter.getCount() - 1);
+        // Start on the last page the user was on
+        mViewPager.setCurrentItem(mPreferences.getStartPage());
+
+        // Initialze the TPI
+        final TitlePageIndicator pageIndicator = (TitlePageIndicator) rootView
+                .findViewById(R.id.fragment_home_phone_pager_titles);
+        // Attach the ViewPager
+        pageIndicator.setViewPager(mViewPager);
+        // Scroll to the current artist, album, or song
+        pageIndicator.setOnCenterItemClickListener(this);
+        return rootView;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public boolean onOptionsItemSelected(final MenuItem item) {
         switch (item.getItemId()) {
             case R.id.menu_shuffle:
                 // Shuffle all the songs
-                MusicUtils.shuffleAll(getSherlockActivity());
+                MusicUtils.shuffleAll(getSupportActivity());
                 return true;
             case R.id.menu_favorite:
                 // Toggle the current track as a favorite and update the menu
                 // item
                 MusicUtils.toggleFavorite();
-                getSherlockActivity().invalidateOptionsMenu();
+                getSupportActivity().invalidateOptionsMenu();
                 return true;
             case R.id.menu_sort_by_az:
                 if (isArtistPage()) {
@@ -270,7 +296,7 @@ public class MusicBrowserPhoneFragment extends SherlockFragment implements
                 } else if (isAlbumPage()) {
                     mPreferences.setAlbumLayout("simple");
                 }
-                NavUtils.goHome(getSherlockActivity());
+                NavUtils.goHome(getSupportActivity());
                 return true;
             case R.id.menu_view_as_detailed:
                 if (isRecentPage()) {
@@ -280,7 +306,7 @@ public class MusicBrowserPhoneFragment extends SherlockFragment implements
                 } else if (isAlbumPage()) {
                     mPreferences.setAlbumLayout("detailed");
                 }
-                NavUtils.goHome(getSherlockActivity());
+                NavUtils.goHome(getSupportActivity());
                 return true;
             case R.id.menu_view_as_grid:
                 if (isRecentPage()) {
@@ -290,7 +316,7 @@ public class MusicBrowserPhoneFragment extends SherlockFragment implements
                 } else if (isAlbumPage()) {
                     mPreferences.setAlbumLayout("grid");
                 }
-                NavUtils.goHome(getSherlockActivity());
+                NavUtils.goHome(getSupportActivity());
                 return true;
             default:
                 break;
@@ -302,44 +328,18 @@ public class MusicBrowserPhoneFragment extends SherlockFragment implements
      * {@inheritDoc}
      */
     @Override
-    public void onCenterItemClick(final int position) {
-        // If on the artist fragment, scrolls to the current artist
-        if (position == 2) {
-            getArtistFragment().scrollToCurrentArtist();
-            // If on the album fragment, scrolls to the current album
-        } else if (position == 3) {
-            getAlbumFragment().scrollToCurrentAlbum();
-            // If on the song fragment, scrolls to the current song
-        } else if (position == 4) {
-            getSongFragment().scrollToCurrentSong();
-        }
+    public void onPause() {
+        super.onPause();
+        // Save the last page the use was on
+        mPreferences.setStartPage(mViewPager.getCurrentItem());
     }
 
-    private boolean isArtistPage() {
-        return mViewPager.getCurrentItem() == 2;
-    }
-
-    private ArtistFragment getArtistFragment() {
-        return (ArtistFragment)mPagerAdapter.getFragment(2);
-    }
-
-    private boolean isAlbumPage() {
-        return mViewPager.getCurrentItem() == 3;
-    }
-
-    private AlbumFragment getAlbumFragment() {
-        return (AlbumFragment)mPagerAdapter.getFragment(3);
-    }
-
-    private boolean isSongPage() {
-        return mViewPager.getCurrentItem() == 4;
-    }
-
-    private SongFragment getSongFragment() {
-        return (SongFragment)mPagerAdapter.getFragment(4);
-    }
-
-    private boolean isRecentPage() {
-        return mViewPager.getCurrentItem() == 1;
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void onPrepareOptionsMenu(final Menu menu) {
+        super.onPrepareOptionsMenu(menu);
+        mResources.setFavoriteIcon(menu);
     }
 }

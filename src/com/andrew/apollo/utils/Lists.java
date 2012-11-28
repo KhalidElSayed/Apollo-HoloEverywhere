@@ -21,10 +21,6 @@ import java.util.LinkedList;
  */
 public final class Lists {
 
-    /** This class is never instantiated */
-    public Lists() {
-    }
-
     /**
      * Creates an empty {@code ArrayList} instance.
      * <p>
@@ -47,6 +43,10 @@ public final class Lists {
      */
     public static final <E> LinkedList<E> newLinkedList() {
         return new LinkedList<E>();
+    }
+
+    /** This class is never instantiated */
+    public Lists() {
     }
 
 }

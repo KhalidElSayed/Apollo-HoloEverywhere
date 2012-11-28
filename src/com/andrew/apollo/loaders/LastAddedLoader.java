@@ -11,17 +11,18 @@
 
 package com.andrew.apollo.loaders;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import android.content.Context;
 import android.database.Cursor;
 import android.provider.BaseColumns;
 import android.provider.MediaStore;
 import android.provider.MediaStore.Audio.AudioColumns;
+import android.provider.MediaStore.MediaColumns;
 
 import com.andrew.apollo.model.Song;
 import com.andrew.apollo.utils.Lists;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Used to query {@link MediaStore.Audio.Media.EXTERNAL_CONTENT_URI} and return
@@ -32,14 +33,38 @@ import java.util.List;
 public class LastAddedLoader extends WrappedAsyncTaskLoader<List<Song>> {
 
     /**
-     * The result
+     * @param context The {@link Context} to use.
+     * @return The {@link Cursor} used to run the song query.
      */
-    private final ArrayList<Song> mSongList = Lists.newArrayList();
+    public static final Cursor makeLastAddedCursor(final Context context) {
+        final int fourWeeks = 4 * 3600 * 24 * 7;
+        final StringBuilder selection = new StringBuilder();
+        selection.append(AudioColumns.IS_MUSIC + "=1");
+        selection.append(" AND " + MediaColumns.TITLE + " != ''"); //$NON-NLS-2$
+        selection.append(" AND " + MediaColumns.DATE_ADDED + ">"); //$NON-NLS-2$
+        selection.append(System.currentTimeMillis() / 1000 - fourWeeks);
+        return context.getContentResolver().query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                new String[] {
+                        /* 0 */
+                        BaseColumns._ID,
+                        /* 1 */
+                        MediaColumns.TITLE,
+                        /* 2 */
+                        AudioColumns.ARTIST,
+                        /* 3 */
+                        AudioColumns.ALBUM
+                }, selection.toString(), null, MediaColumns.DATE_ADDED + " DESC");
+    }
 
     /**
      * The {@link Cursor} used to run the query.
      */
     private Cursor mCursor;
+
+    /**
+     * The result
+     */
+    private final ArrayList<Song> mSongList = Lists.newArrayList();
 
     /**
      * Constructor of <code>LastAddedHandler</code>
@@ -85,29 +110,5 @@ public class LastAddedLoader extends WrappedAsyncTaskLoader<List<Song>> {
             mCursor = null;
         }
         return mSongList;
-    }
-
-    /**
-     * @param context The {@link Context} to use.
-     * @return The {@link Cursor} used to run the song query.
-     */
-    public static final Cursor makeLastAddedCursor(final Context context) {
-        final int fourWeeks = 4 * 3600 * 24 * 7;
-        final StringBuilder selection = new StringBuilder();
-        selection.append(AudioColumns.IS_MUSIC + "=1");
-        selection.append(" AND " + AudioColumns.TITLE + " != ''"); //$NON-NLS-2$
-        selection.append(" AND " + MediaStore.Audio.Media.DATE_ADDED + ">"); //$NON-NLS-2$
-        selection.append(System.currentTimeMillis() / 1000 - fourWeeks);
-        return context.getContentResolver().query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                new String[] {
-                        /* 0 */
-                        BaseColumns._ID,
-                        /* 1 */
-                        AudioColumns.TITLE,
-                        /* 2 */
-                        AudioColumns.ARTIST,
-                        /* 3 */
-                        AudioColumns.ALBUM
-                }, selection.toString(), null, MediaStore.Audio.Media.DATE_ADDED + " DESC");
     }
 }

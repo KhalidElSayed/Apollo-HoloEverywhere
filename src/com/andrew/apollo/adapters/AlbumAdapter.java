@@ -11,6 +11,8 @@
 
 package com.andrew.apollo.adapters;
 
+import org.holoeverywhere.app.Activity;
+
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -19,7 +21,6 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 
-import com.actionbarsherlock.app.SherlockFragmentActivity;
 import com.andrew.apollo.Config;
 import com.andrew.apollo.R;
 import com.andrew.apollo.cache.ImageFetcher;
@@ -43,9 +44,9 @@ public class AlbumAdapter extends ArrayAdapter<Album> {
     private static final int VIEW_TYPE_COUNT = 2;
 
     /**
-     * The resource Id of the layout to inflate
+     * Used to cache the album info
      */
-    private final int mLayoutId;
+    private DataHolder[] mData;
 
     /**
      * Image cache and image fetcher
@@ -53,9 +54,9 @@ public class AlbumAdapter extends ArrayAdapter<Album> {
     private final ImageFetcher mImageFetcher;
 
     /**
-     * Semi-transparent overlay
+     * The resource Id of the layout to inflate
      */
-    private final int mOverlay;
+    private final int mLayoutId;
 
     /**
      * Determines if the grid or list should be the default style
@@ -63,15 +64,15 @@ public class AlbumAdapter extends ArrayAdapter<Album> {
     private boolean mLoadExtraData = false;
 
     /**
+     * Semi-transparent overlay
+     */
+    private final int mOverlay;
+
+    /**
      * Sets the album art on click listener to start playing them album when
      * touched.
      */
     private boolean mTouchPlay = false;
-
-    /**
-     * Used to cache the album info
-     */
-    private DataHolder[] mData;
 
     /**
      * Constructor of <code>AlbumAdapter</code>
@@ -86,9 +87,40 @@ public class AlbumAdapter extends ArrayAdapter<Album> {
         // Get the layout Id
         mLayoutId = layoutId;
         // Initialize the cache & image fetcher
-        mImageFetcher = ApolloUtils.getImageFetcher((SherlockFragmentActivity)context);
+        mImageFetcher = ApolloUtils.getImageFetcher((Activity) context);
         // Cache the transparent overlay
         mOverlay = context.getResources().getColor(R.color.list_item_background);
+    }
+
+    /**
+     * Method used to cache the data used to populate the list or grid. The idea
+     * is to cache everything before {@code #getView(int, View, ViewGroup)} is
+     * called.
+     */
+    public void buildCache() {
+        mData = new DataHolder[getCount()];
+        for (int i = 0; i < getCount(); i++) {
+            // Build the album
+            final Album album = getItem(i);
+
+            // Build the data holder
+            mData[i] = new DataHolder();
+            // Album Id
+            mData[i].mItemId = album.mAlbumId;
+            // Album names (line one)
+            mData[i].mLineOne = album.mAlbumName;
+            // Album artist names (line two)
+            mData[i].mLineTwo = album.mArtistName;
+            // Number of songs for each album (line three)
+            mData[i].mLineThree = album.mSongNumber;
+        }
+    }
+
+    /**
+     * Flushes the disk cache.
+     */
+    public void flush() {
+        mImageFetcher.flush();
     }
 
     /**
@@ -103,7 +135,7 @@ public class AlbumAdapter extends ArrayAdapter<Album> {
             holder = new MusicHolder(convertView);
             convertView.setTag(holder);
         } else {
-            holder = (MusicHolder)convertView.getTag();
+            holder = (MusicHolder) convertView.getTag();
         }
 
         // Retrieve the data holder
@@ -136,40 +168,16 @@ public class AlbumAdapter extends ArrayAdapter<Album> {
      * {@inheritDoc}
      */
     @Override
-    public boolean hasStableIds() {
-        return true;
+    public int getViewTypeCount() {
+        return VIEW_TYPE_COUNT;
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public int getViewTypeCount() {
-        return VIEW_TYPE_COUNT;
-    }
-
-    /**
-     * Method used to cache the data used to populate the list or grid. The idea
-     * is to cache everything before {@code #getView(int, View, ViewGroup)} is
-     * called.
-     */
-    public void buildCache() {
-        mData = new DataHolder[getCount()];
-        for (int i = 0; i < getCount(); i++) {
-            // Build the album
-            final Album album = getItem(i);
-
-            // Build the data holder
-            mData[i] = new DataHolder();
-            // Album Id
-            mData[i].mItemId = album.mAlbumId;
-            // Album names (line one)
-            mData[i].mLineOne = album.mAlbumName;
-            // Album artist names (line two)
-            mData[i].mLineTwo = album.mArtistName;
-            // Number of songs for each album (line three)
-            mData[i].mLineThree = album.mSongNumber;
-        }
+    public boolean hasStableIds() {
+        return true;
     }
 
     /**
@@ -194,36 +202,12 @@ public class AlbumAdapter extends ArrayAdapter<Album> {
     }
 
     /**
-     * Method that unloads and clears the items in the adapter
-     */
-    public void unload() {
-        clear();
-        mData = null;
-    }
-
-    /**
-     * @param pause True to temporarily pause the disk cache, false otherwise.
-     */
-    public void setPauseDiskCache(final boolean pause) {
-        if (mImageFetcher != null) {
-            mImageFetcher.setPauseDiskCache(pause);
-        }
-    }
-
-    /**
      * @param album The key used to find the cached album to remove
      */
     public void removeFromCache(final Album album) {
         if (mImageFetcher != null) {
             mImageFetcher.removeFromCache(album.mAlbumName + Config.ALBUM_ART_SUFFIX);
         }
-    }
-
-    /**
-     * Flushes the disk cache.
-     */
-    public void flush() {
-        mImageFetcher.flush();
     }
 
     /**
@@ -236,10 +220,27 @@ public class AlbumAdapter extends ArrayAdapter<Album> {
     }
 
     /**
+     * @param pause True to temporarily pause the disk cache, false otherwise.
+     */
+    public void setPauseDiskCache(final boolean pause) {
+        if (mImageFetcher != null) {
+            mImageFetcher.setPauseDiskCache(pause);
+        }
+    }
+
+    /**
      * @param play True to play the album when the artwork is touched, false
      *            otherwise.
      */
     public void setTouchPlay(final boolean play) {
         mTouchPlay = play;
+    }
+
+    /**
+     * Method that unloads and clears the items in the adapter
+     */
+    public void unload() {
+        clear();
+        mData = null;
     }
 }

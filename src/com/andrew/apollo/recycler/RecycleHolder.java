@@ -28,7 +28,7 @@ public class RecycleHolder implements RecyclerListener {
      */
     @Override
     public void onMovedToScrapHeap(final View view) {
-        MusicHolder holder = (MusicHolder)view.getTag();
+        MusicHolder holder = (MusicHolder) view.getTag();
         if (holder == null) {
             holder = new MusicHolder(view);
             view.setTag(holder);

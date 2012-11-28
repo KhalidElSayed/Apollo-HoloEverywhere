@@ -27,17 +27,11 @@ import com.andrew.apollo.ui.activities.HomeActivity;
  */
 public class MediaButtonIntentReceiver extends BroadcastReceiver {
 
-    private static final int MSG_LONGPRESS_TIMEOUT = 1;
+    private static final int DOUBLE_CLICK = 800;
 
     private static final int LONG_PRESS_DELAY = 1000;
 
-    private static final int DOUBLE_CLICK = 800;
-
-    private static long mLastClickTime = 0;
-
     private static boolean mDown = false;
-
-    private static boolean mLaunched = false;
 
     private static Handler mHandler = new Handler() {
 
@@ -49,7 +43,7 @@ public class MediaButtonIntentReceiver extends BroadcastReceiver {
             switch (msg.what) {
                 case MSG_LONGPRESS_TIMEOUT:
                     if (!mLaunched) {
-                        final Context context = (Context)msg.obj;
+                        final Context context = (Context) msg.obj;
                         final Intent i = new Intent();
                         i.setClass(context, HomeActivity.class);
                         i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -60,6 +54,12 @@ public class MediaButtonIntentReceiver extends BroadcastReceiver {
             }
         }
     };
+
+    private static long mLastClickTime = 0;
+
+    private static boolean mLaunched = false;
+
+    private static final int MSG_LONGPRESS_TIMEOUT = 1;
 
     /**
      * {@inheritDoc}
@@ -73,7 +73,7 @@ public class MediaButtonIntentReceiver extends BroadcastReceiver {
             i.putExtra(MusicPlaybackService.CMDNAME, MusicPlaybackService.CMDPAUSE);
             context.startService(i);
         } else if (Intent.ACTION_MEDIA_BUTTON.equals(intentAction)) {
-            final KeyEvent event = (KeyEvent)intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+            final KeyEvent event = (KeyEvent) intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
             if (event == null) {
                 return;
             }

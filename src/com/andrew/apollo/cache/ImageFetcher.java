@@ -11,6 +11,16 @@
 
 package com.andrew.apollo.cache;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Iterator;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -28,38 +38,159 @@ import com.andrew.apollo.utils.ApolloUtils;
 import com.andrew.apollo.utils.MusicUtils;
 import com.andrew.apollo.utils.PreferenceUtils;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.Iterator;
-
 /**
  * A subclass of {@link ImageWorker} that fetches images from a URL.
  */
 public class ImageFetcher extends ImageWorker {
 
-    public static final int IO_BUFFER_SIZE_BYTES = 1024;
+    private static final String DEFAULT_HTTP_CACHE_DIR = "http"; //$NON-NLS-1$
 
     private static final int DEFAULT_MAX_IMAGE_HEIGHT = 1024;
 
     private static final int DEFAULT_MAX_IMAGE_WIDTH = 1024;
 
-    private static final String DEFAULT_HTTP_CACHE_DIR = "http"; //$NON-NLS-1$
+    public static final int IO_BUFFER_SIZE_BYTES = 1024;
 
     private static ImageFetcher sInstance = null;
 
     /**
-     * Creates a new instance of {@link ImageFetcher}.
+     * Calculate an inSampleSize for use in a
+     * {@link android.graphics.BitmapFactory.Options} object when decoding
+     * bitmaps using the decode* methods from {@link BitmapFactory}. This
+     * implementation calculates the closest inSampleSize that will result in
+     * the final decoded bitmap having a width and height equal to or larger
+     * than the requested width and height. This implementation does not ensure
+     * a power of 2 is returned for inSampleSize which can be faster when
+     * decoding but results in a larger bitmap which isn't as useful for caching
+     * purposes.
      * 
-     * @param context The {@link Context} to use.
+     * @param options An options object with out* params already populated (run
+     *            through a decode* method with inJustDecodeBounds==true
+     * @param reqWidth The requested width of the resulting bitmap
+     * @param reqHeight The requested height of the resulting bitmap
+     * @return The value to be used for inSampleSize
      */
-    public ImageFetcher(final Context context) {
-        super(context);
+    public static final int calculateInSampleSize(final BitmapFactory.Options options,
+            final int reqWidth, final int reqHeight) {
+        /* Raw height and width of image */
+        final int height = options.outHeight;
+        final int width = options.outWidth;
+        int inSampleSize = 1;
+
+        if (height > reqHeight || width > reqWidth) {
+            if (width > height) {
+                inSampleSize = Math.round((float) height / (float) reqHeight);
+            } else {
+                inSampleSize = Math.round((float) width / (float) reqWidth);
+            }
+
+            // This offers some additional logic in case the image has a strange
+            // aspect ratio. For example, a panorama may have a much larger
+            // width than height. In these cases the total pixels might still
+            // end up being too large to fit comfortably in memory, so we should
+            // be more aggressive with sample down the image (=larger
+            // inSampleSize).
+
+            final float totalPixels = width * height;
+
+            /* More than 2x the requested pixels we'll sample down further */
+            final float totalReqPixelsCap = reqWidth * reqHeight * 2;
+
+            while (totalPixels / (inSampleSize * inSampleSize) > totalReqPixelsCap) {
+                inSampleSize++;
+            }
+        }
+        return inSampleSize;
+    }
+
+    /**
+     * Decode and sample down a {@link Bitmap} from a file to the requested
+     * width and height.
+     * 
+     * @param filename The full path of the file to decode
+     * @param reqWidth The requested width of the resulting bitmap
+     * @param reqHeight The requested height of the resulting bitmap
+     * @return A {@link Bitmap} sampled down from the original with the same
+     *         aspect ratio and dimensions that are equal to or greater than the
+     *         requested width and height
+     */
+    public static Bitmap decodeSampledBitmapFromFile(final String filename) {
+
+        // First decode with inJustDecodeBounds=true to check dimensions
+        final BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(filename, options);
+
+        // Calculate inSampleSize
+        options.inSampleSize = calculateInSampleSize(options, DEFAULT_MAX_IMAGE_WIDTH,
+                DEFAULT_MAX_IMAGE_HEIGHT);
+
+        // Decode bitmap with inSampleSize set
+        options.inJustDecodeBounds = false;
+        return BitmapFactory.decodeFile(filename, options);
+    }
+
+    /**
+     * Workaround for bug pre-Froyo, see here for more info:
+     * http://android-developers.blogspot.com/2011/09/androids-http-clients.html
+     */
+    public static void disableConnectionReuseIfNecessary() {
+        /* HTTP connection reuse which was buggy pre-froyo */
+        if (hasHttpConnectionBug()) {
+            System.setProperty("http.keepAlive", "false"); //$NON-NLS-1$
+        }
+    }
+
+    /**
+     * Download a {@link Bitmap} from a URL, write it to a disk and return the
+     * File pointer. This implementation uses a simple disk cache.
+     * 
+     * @param context The context to use
+     * @param urlString The URL to fetch
+     * @return A {@link File} pointing to the fetched bitmap
+     */
+    public static final File downloadBitmapToFile(final Context context, final String urlString,
+            final String uniqueName) {
+        final File cacheDir = ImageCache.getDiskCacheDir(context, uniqueName);
+
+        if (!cacheDir.exists()) {
+            cacheDir.mkdir();
+        }
+
+        disableConnectionReuseIfNecessary();
+        HttpURLConnection urlConnection = null;
+        BufferedOutputStream out = null;
+
+        try {
+            final File tempFile = File.createTempFile("bitmap", null, cacheDir); //$NON-NLS-1$
+
+            final URL url = new URL(urlString);
+            urlConnection = (HttpURLConnection) url.openConnection();
+            if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_OK) {
+                return null;
+            }
+            final InputStream in = new BufferedInputStream(urlConnection.getInputStream(),
+                    IO_BUFFER_SIZE_BYTES);
+            out = new BufferedOutputStream(new FileOutputStream(tempFile), IO_BUFFER_SIZE_BYTES);
+
+            int oneByte;
+            while ((oneByte = in.read()) != -1) {
+                out.write(oneByte);
+            }
+            return tempFile;
+        } catch (final IOException ignored) {
+        } finally {
+            if (urlConnection != null) {
+                urlConnection.disconnect();
+            }
+            if (out != null) {
+                try {
+                    out.close();
+                } catch (final IOException ignored) {
+                }
+            }
+        }
+        return null;
     }
 
     /**
@@ -73,6 +204,121 @@ public class ImageFetcher extends ImageWorker {
             sInstance = new ImageFetcher(context.getApplicationContext());
         }
         return sInstance;
+    }
+
+    /**
+     * Check if OS version has a http URLConnection bug. See here for more
+     * information:
+     * http://android-developers.blogspot.com/2011/09/androids-http-clients.html
+     * 
+     * @return true if this OS version is affected, false otherwise
+     */
+    public static final boolean hasHttpConnectionBug() {
+        return !ApolloUtils.hasFroyo();
+    }
+
+    /**
+     * Creates a new instance of {@link ImageFetcher}.
+     * 
+     * @param context The {@link Context} to use.
+     */
+    public ImageFetcher(final Context context) {
+        super(context);
+    }
+
+    /**
+     * Clears the disk and memory caches
+     */
+    public void clearCaches() {
+        if (mImageCache != null) {
+            mImageCache.clearCaches();
+        }
+    }
+
+    /**
+     * Finds cached or downloads album art. Used in {@link MusicPlaybackService}
+     * to set the current album art in the notification and lock screen
+     * 
+     * @param albumName The name of the current album
+     * @param albumId The ID of the current album
+     * @param artistName The album artist in case we should have to download
+     *            missing artwork
+     * @return The album art as an {@link Bitmap}
+     */
+    public Bitmap getArtwork(final String albumName, final String albumId, final String artistName) {
+        // Check the disk cache
+        Bitmap artwork = null;
+
+        if (artwork == null && albumName != null && mImageCache != null) {
+            artwork = mImageCache.getBitmapFromDiskCache(albumName + Config.ALBUM_ART_SUFFIX);
+        }
+        if (artwork == null && albumId != null && mImageCache != null) {
+            // Check for local artwork
+            artwork = mImageCache.getArtworkFromFile(mContext, albumId);
+        }
+        // if (artwork == null && artistName != null && albumName != null) {
+        // // Download missing artwork
+        // artwork = processBitmap(processImageUrl(artistName, albumName,
+        // ImageType.ALBUM));
+        // }
+        if (artwork != null) {
+            return artwork;
+        }
+        return getDefaultArtwork();
+    }
+
+    /**
+     * @param key The key used to find the album art to return
+     */
+    public Bitmap getCachedArtwork(final String key) {
+        if (mImageCache != null) {
+            return mImageCache.getCachedArtwork(mContext, key + Config.ALBUM_ART_SUFFIX,
+                    String.valueOf(MusicUtils.getIdForAlbum(mContext, key)));
+        }
+        return getDefaultArtwork();
+    }
+
+    /**
+     * @param key The key used to find the image to return
+     */
+    public Bitmap getCachedBitmap(final String key) {
+        if (mImageCache != null) {
+            return mImageCache.getCachedBitmap(key);
+        }
+        return getDefaultArtwork();
+    }
+
+    /**
+     * Used to fetch album images.
+     */
+    public void loadAlbumImage(final String artistName, final String albumName, final String index,
+            final ImageView imageView) {
+        loadImage(albumName + Config.ALBUM_ART_SUFFIX, artistName, albumName, index, imageView,
+                ImageType.ALBUM);
+    }
+
+    /**
+     * Used to fetch artist images.
+     */
+    public void loadArtistImage(final String key, final ImageView imageView) {
+        loadImage(key, key, null, null, imageView, ImageType.ARTIST);
+    }
+
+    /**
+     * Used to fetch the current artist image.
+     */
+    public void loadCurrentArtistImage(final ImageView imageView) {
+        loadImage(MusicUtils.getArtistName(), MusicUtils.getArtistName(), null, null, imageView,
+                ImageType.ARTIST);
+    }
+
+    /**
+     * Used to fetch the current artwork.
+     */
+    public void loadCurrentArtwork(final ImageView imageView) {
+        loadImage(MusicUtils.getAlbumName() + Config.ALBUM_ART_SUFFIX, MusicUtils.getArtistName(),
+                MusicUtils.getAlbumName(), String.valueOf(MusicUtils.getCurrentAlbumId()),
+                imageView, ImageType.ALBUM);
     }
 
     /**
@@ -144,57 +390,6 @@ public class ImageFetcher extends ImageWorker {
     }
 
     /**
-     * Used to fetch album images.
-     */
-    public void loadAlbumImage(final String artistName, final String albumName, final String index,
-            final ImageView imageView) {
-        loadImage(albumName + Config.ALBUM_ART_SUFFIX, artistName, albumName, index, imageView,
-                ImageType.ALBUM);
-    }
-
-    /**
-     * Used to fetch the current artwork.
-     */
-    public void loadCurrentArtwork(final ImageView imageView) {
-        loadImage(MusicUtils.getAlbumName() + Config.ALBUM_ART_SUFFIX, MusicUtils.getArtistName(),
-                MusicUtils.getAlbumName(), String.valueOf(MusicUtils.getCurrentAlbumId()),
-                imageView, ImageType.ALBUM);
-    }
-
-    /**
-     * Used to fetch artist images.
-     */
-    public void loadArtistImage(final String key, final ImageView imageView) {
-        loadImage(key, key, null, null, imageView, ImageType.ARTIST);
-    }
-
-    /**
-     * Used to fetch the current artist image.
-     */
-    public void loadCurrentArtistImage(final ImageView imageView) {
-        loadImage(MusicUtils.getArtistName(), MusicUtils.getArtistName(), null, null, imageView,
-                ImageType.ARTIST);
-    }
-
-    /**
-     * @param pause True to temporarily pause the disk cache, false otherwise.
-     */
-    public void setPauseDiskCache(final boolean pause) {
-        if (mImageCache != null) {
-            mImageCache.setPauseDiskCache(pause);
-        }
-    }
-
-    /**
-     * Clears the disk and memory caches
-     */
-    public void clearCaches() {
-        if (mImageCache != null) {
-            mImageCache.clearCaches();
-        }
-    }
-
-    /**
      * @param key The key used to find the image to remove
      */
     public void removeFromCache(final String key) {
@@ -204,207 +399,12 @@ public class ImageFetcher extends ImageWorker {
     }
 
     /**
-     * @param key The key used to find the image to return
+     * @param pause True to temporarily pause the disk cache, false otherwise.
      */
-    public Bitmap getCachedBitmap(final String key) {
+    public void setPauseDiskCache(final boolean pause) {
         if (mImageCache != null) {
-            return mImageCache.getCachedBitmap(key);
+            mImageCache.setPauseDiskCache(pause);
         }
-        return getDefaultArtwork();
-    }
-
-    /**
-     * @param key The key used to find the album art to return
-     */
-    public Bitmap getCachedArtwork(final String key) {
-        if (mImageCache != null) {
-            return mImageCache.getCachedArtwork(mContext, key + Config.ALBUM_ART_SUFFIX,
-                    String.valueOf(MusicUtils.getIdForAlbum(mContext, key)));
-        }
-        return getDefaultArtwork();
-    }
-
-    /**
-     * Finds cached or downloads album art. Used in {@link MusicPlaybackService}
-     * to set the current album art in the notification and lock screen
-     * 
-     * @param albumName The name of the current album
-     * @param albumId The ID of the current album
-     * @param artistName The album artist in case we should have to download
-     *            missing artwork
-     * @return The album art as an {@link Bitmap}
-     */
-    public Bitmap getArtwork(final String albumName, final String albumId, final String artistName) {
-        // Check the disk cache
-        Bitmap artwork = null;
-
-        if (artwork == null && albumName != null && mImageCache != null) {
-            artwork = mImageCache.getBitmapFromDiskCache(albumName + Config.ALBUM_ART_SUFFIX);
-        }
-        if (artwork == null && albumId != null && mImageCache != null) {
-            // Check for local artwork
-            artwork = mImageCache.getArtworkFromFile(mContext, albumId);
-        }
-        // if (artwork == null && artistName != null && albumName != null) {
-        // // Download missing artwork
-        // artwork = processBitmap(processImageUrl(artistName, albumName,
-        // ImageType.ALBUM));
-        // }
-        if (artwork != null) {
-            return artwork;
-        }
-        return getDefaultArtwork();
-    }
-
-    /**
-     * Download a {@link Bitmap} from a URL, write it to a disk and return the
-     * File pointer. This implementation uses a simple disk cache.
-     * 
-     * @param context The context to use
-     * @param urlString The URL to fetch
-     * @return A {@link File} pointing to the fetched bitmap
-     */
-    public static final File downloadBitmapToFile(final Context context, final String urlString,
-            final String uniqueName) {
-        final File cacheDir = ImageCache.getDiskCacheDir(context, uniqueName);
-
-        if (!cacheDir.exists()) {
-            cacheDir.mkdir();
-        }
-
-        disableConnectionReuseIfNecessary();
-        HttpURLConnection urlConnection = null;
-        BufferedOutputStream out = null;
-
-        try {
-            final File tempFile = File.createTempFile("bitmap", null, cacheDir); //$NON-NLS-1$
-
-            final URL url = new URL(urlString);
-            urlConnection = (HttpURLConnection)url.openConnection();
-            if (urlConnection.getResponseCode() != HttpURLConnection.HTTP_OK) {
-                return null;
-            }
-            final InputStream in = new BufferedInputStream(urlConnection.getInputStream(),
-                    IO_BUFFER_SIZE_BYTES);
-            out = new BufferedOutputStream(new FileOutputStream(tempFile), IO_BUFFER_SIZE_BYTES);
-
-            int oneByte;
-            while ((oneByte = in.read()) != -1) {
-                out.write(oneByte);
-            }
-            return tempFile;
-        } catch (final IOException ignored) {
-        } finally {
-            if (urlConnection != null) {
-                urlConnection.disconnect();
-            }
-            if (out != null) {
-                try {
-                    out.close();
-                } catch (final IOException ignored) {
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Decode and sample down a {@link Bitmap} from a file to the requested
-     * width and height.
-     * 
-     * @param filename The full path of the file to decode
-     * @param reqWidth The requested width of the resulting bitmap
-     * @param reqHeight The requested height of the resulting bitmap
-     * @return A {@link Bitmap} sampled down from the original with the same
-     *         aspect ratio and dimensions that are equal to or greater than the
-     *         requested width and height
-     */
-    public static Bitmap decodeSampledBitmapFromFile(final String filename) {
-
-        // First decode with inJustDecodeBounds=true to check dimensions
-        final BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(filename, options);
-
-        // Calculate inSampleSize
-        options.inSampleSize = calculateInSampleSize(options, DEFAULT_MAX_IMAGE_WIDTH,
-                DEFAULT_MAX_IMAGE_HEIGHT);
-
-        // Decode bitmap with inSampleSize set
-        options.inJustDecodeBounds = false;
-        return BitmapFactory.decodeFile(filename, options);
-    }
-
-    /**
-     * Calculate an inSampleSize for use in a
-     * {@link android.graphics.BitmapFactory.Options} object when decoding
-     * bitmaps using the decode* methods from {@link BitmapFactory}. This
-     * implementation calculates the closest inSampleSize that will result in
-     * the final decoded bitmap having a width and height equal to or larger
-     * than the requested width and height. This implementation does not ensure
-     * a power of 2 is returned for inSampleSize which can be faster when
-     * decoding but results in a larger bitmap which isn't as useful for caching
-     * purposes.
-     * 
-     * @param options An options object with out* params already populated (run
-     *            through a decode* method with inJustDecodeBounds==true
-     * @param reqWidth The requested width of the resulting bitmap
-     * @param reqHeight The requested height of the resulting bitmap
-     * @return The value to be used for inSampleSize
-     */
-    public static final int calculateInSampleSize(final BitmapFactory.Options options,
-            final int reqWidth, final int reqHeight) {
-        /* Raw height and width of image */
-        final int height = options.outHeight;
-        final int width = options.outWidth;
-        int inSampleSize = 1;
-
-        if (height > reqHeight || width > reqWidth) {
-            if (width > height) {
-                inSampleSize = Math.round((float)height / (float)reqHeight);
-            } else {
-                inSampleSize = Math.round((float)width / (float)reqWidth);
-            }
-
-            // This offers some additional logic in case the image has a strange
-            // aspect ratio. For example, a panorama may have a much larger
-            // width than height. In these cases the total pixels might still
-            // end up being too large to fit comfortably in memory, so we should
-            // be more aggressive with sample down the image (=larger
-            // inSampleSize).
-
-            final float totalPixels = width * height;
-
-            /* More than 2x the requested pixels we'll sample down further */
-            final float totalReqPixelsCap = reqWidth * reqHeight * 2;
-
-            while (totalPixels / (inSampleSize * inSampleSize) > totalReqPixelsCap) {
-                inSampleSize++;
-            }
-        }
-        return inSampleSize;
-    }
-
-    /**
-     * Workaround for bug pre-Froyo, see here for more info:
-     * http://android-developers.blogspot.com/2011/09/androids-http-clients.html
-     */
-    public static void disableConnectionReuseIfNecessary() {
-        /* HTTP connection reuse which was buggy pre-froyo */
-        if (hasHttpConnectionBug()) {
-            System.setProperty("http.keepAlive", "false"); //$NON-NLS-1$
-        }
-    }
-
-    /**
-     * Check if OS version has a http URLConnection bug. See here for more
-     * information:
-     * http://android-developers.blogspot.com/2011/09/androids-http-clients.html
-     * 
-     * @return true if this OS version is affected, false otherwise
-     */
-    public static final boolean hasHttpConnectionBug() {
-        return !ApolloUtils.hasFroyo();
     }
 
 }

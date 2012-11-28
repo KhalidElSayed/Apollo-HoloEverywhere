@@ -66,21 +66,6 @@ public class Album {
      * {@inheritDoc}
      */
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (mAlbumId == null ? 0 : mAlbumId.hashCode());
-        result = prime * result + (mAlbumName == null ? 0 : mAlbumName.hashCode());
-        result = prime * result + (mArtistName == null ? 0 : mArtistName.hashCode());
-        result = prime * result + (mSongNumber == null ? 0 : mSongNumber.hashCode());
-        result = prime * result + (mYear == null ? 0 : mYear.hashCode());
-        return result;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public boolean equals(final Object obj) {
         if (this == obj) {
             return true;
@@ -91,7 +76,7 @@ public class Album {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final Album other = (Album)obj;
+        final Album other = (Album) obj;
         if (mAlbumId == null) {
             if (other.mAlbumId != null) {
                 return false;
@@ -128,6 +113,21 @@ public class Album {
             return false;
         }
         return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + (mAlbumId == null ? 0 : mAlbumId.hashCode());
+        result = prime * result + (mAlbumName == null ? 0 : mAlbumName.hashCode());
+        result = prime * result + (mArtistName == null ? 0 : mArtistName.hashCode());
+        result = prime * result + (mSongNumber == null ? 0 : mSongNumber.hashCode());
+        result = prime * result + (mYear == null ? 0 : mYear.hashCode());
+        return result;
     }
 
     /**

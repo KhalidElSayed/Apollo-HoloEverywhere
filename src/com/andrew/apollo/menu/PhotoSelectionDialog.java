@@ -11,22 +11,23 @@
 
 package com.andrew.apollo.menu;
 
-import android.app.AlertDialog;
-import android.app.Dialog;
+import java.util.ArrayList;
+
+import org.holoeverywhere.ArrayAdapter;
+import org.holoeverywhere.app.AlertDialog;
+import org.holoeverywhere.app.Dialog;
+import org.holoeverywhere.app.DialogFragment;
+import org.holoeverywhere.app.Fragment;
+
 import android.content.DialogInterface;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
-import android.widget.ArrayAdapter;
 import android.widget.ListAdapter;
 
-import com.actionbarsherlock.app.SherlockDialogFragment;
 import com.andrew.apollo.Config;
 import com.andrew.apollo.R;
 import com.andrew.apollo.ui.activities.ProfileActivity;
 import com.andrew.apollo.utils.ApolloUtils;
 import com.andrew.apollo.utils.Lists;
-
-import java.util.ArrayList;
 
 /**
  * Used when the user touches the image in the header in {@link ProfileActivity}
@@ -35,25 +36,24 @@ import java.util.ArrayList;
  * 
  * @author Andrew Neal (andrewdneal@gmail.com)
  */
-public class PhotoSelectionDialog extends SherlockDialogFragment {
+public class PhotoSelectionDialog extends DialogFragment {
+
+    /**
+     * Easily detect the MIME type
+     */
+    public enum ProfileType {
+        ALBUM, ARTIST, OTHER
+    }
+
+    private static final int FETCH_IMAGE = 3;
+
+    private static final int GOOGLE_SEARCH = 2;
+
+    private static ProfileType mProfileType;
 
     private static final int NEW_PHOTO = 0;
 
     private static final int OLD_PHOTO = 1;
-
-    private static final int GOOGLE_SEARCH = 2;
-
-    private static final int FETCH_IMAGE = 3;
-
-    private final ArrayList<String> mChoices = Lists.newArrayList();
-
-    private static ProfileType mProfileType;
-
-    /**
-     * Empty constructor as per the {@link Fragment} documentation
-     */
-    public PhotoSelectionDialog() {
-    }
 
     /**
      * @param title The dialog title.
@@ -67,6 +67,14 @@ public class PhotoSelectionDialog extends SherlockDialogFragment {
         frag.setArguments(args);
         mProfileType = type;
         return frag;
+    }
+
+    private final ArrayList<String> mChoices = Lists.newArrayList();
+
+    /**
+     * Empty constructor as per the {@link Fragment} documentation
+     */
+    public PhotoSelectionDialog() {
     }
 
     /**
@@ -89,45 +97,31 @@ public class PhotoSelectionDialog extends SherlockDialogFragment {
                 break;
         }
         // Dialog item Adapter
-        final ListAdapter adapter = new ArrayAdapter<String>(getSherlockActivity(),
+        final ListAdapter adapter = new ArrayAdapter<String>(getSupportActivity(),
                 android.R.layout.select_dialog_item, mChoices);
-        return new AlertDialog.Builder(getSherlockActivity()).setTitle(title)
+        return new AlertDialog.Builder(getSupportActivity()).setTitle(title)
                 .setAdapter(adapter, new DialogInterface.OnClickListener() {
 
                     @Override
                     public void onClick(final DialogInterface dialog, final int which) {
                         switch (which) {
                             case NEW_PHOTO:
-                                ((ProfileActivity)getSherlockActivity()).selectNewPhoto();
+                                ((ProfileActivity) getSupportActivity()).selectNewPhoto();
                                 break;
                             case OLD_PHOTO:
-                                ((ProfileActivity)getSherlockActivity()).selectOldPhoto();
+                                ((ProfileActivity) getSupportActivity()).selectOldPhoto();
                                 break;
                             case FETCH_IMAGE:
-                                ((ProfileActivity)getSherlockActivity()).fetchAlbumArt();
+                                ((ProfileActivity) getSupportActivity()).fetchAlbumArt();
                                 break;
                             case GOOGLE_SEARCH:
-                                ((ProfileActivity)getSherlockActivity()).googleSearch();
+                                ((ProfileActivity) getSupportActivity()).googleSearch();
                                 break;
                             default:
                                 break;
                         }
                     }
                 }).create();
-    }
-
-    /**
-     * Adds the choices for the artist profile image.
-     */
-    private void setArtistChoices() {
-        // Select a photo from the gallery
-        mChoices.add(NEW_PHOTO, getString(R.string.new_photo));
-        if (ApolloUtils.isOnline(getSherlockActivity())) {
-            // Option to fetch the old artist image
-            mChoices.add(OLD_PHOTO, getString(R.string.context_menu_fetch_artist_image));
-            // Search Google for the artist name
-            mChoices.add(GOOGLE_SEARCH, getString(R.string.google_search));
-        }
     }
 
     /**
@@ -138,11 +132,25 @@ public class PhotoSelectionDialog extends SherlockDialogFragment {
         mChoices.add(NEW_PHOTO, getString(R.string.new_photo));
         // Option to fetch the old album image
         mChoices.add(OLD_PHOTO, getString(R.string.old_photo));
-        if (ApolloUtils.isOnline(getSherlockActivity())) {
+        if (ApolloUtils.isOnline(getSupportActivity())) {
             // Search Google for the album name
             mChoices.add(GOOGLE_SEARCH, getString(R.string.google_search));
             // Option to fetch the album image
             mChoices.add(FETCH_IMAGE, getString(R.string.context_menu_fetch_album_art));
+        }
+    }
+
+    /**
+     * Adds the choices for the artist profile image.
+     */
+    private void setArtistChoices() {
+        // Select a photo from the gallery
+        mChoices.add(NEW_PHOTO, getString(R.string.new_photo));
+        if (ApolloUtils.isOnline(getSupportActivity())) {
+            // Option to fetch the old artist image
+            mChoices.add(OLD_PHOTO, getString(R.string.context_menu_fetch_artist_image));
+            // Search Google for the artist name
+            mChoices.add(GOOGLE_SEARCH, getString(R.string.google_search));
         }
     }
 
@@ -154,12 +162,5 @@ public class PhotoSelectionDialog extends SherlockDialogFragment {
         mChoices.add(NEW_PHOTO, getString(R.string.new_photo));
         // Option to use the default image
         mChoices.add(OLD_PHOTO, getString(R.string.use_default));
-    }
-
-    /**
-     * Easily detect the MIME type
-     */
-    public enum ProfileType {
-        ARTIST, ALBUM, OTHER
     }
 }

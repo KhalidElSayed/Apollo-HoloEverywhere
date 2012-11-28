@@ -37,14 +37,6 @@ import com.andrew.apollo.provider.RecentStore.RecentStoreColumns;
 public class RecentWidgetService extends RemoteViewsService {
 
     /**
-     * {@inheritDoc}
-     */
-    @Override
-    public RemoteViewsFactory onGetViewFactory(final Intent intent) {
-        return new WidgetRemoteViewsFactory(getApplicationContext());
-    }
-
-    /**
      * This is the factory that will provide data to the collection widget.
      */
     private static final class WidgetRemoteViewsFactory implements
@@ -60,6 +52,11 @@ public class RecentWidgetService extends RemoteViewsService {
         private final Context mContext;
 
         /**
+         * Cursor to use
+         */
+        private Cursor mCursor;
+
+        /**
          * Image cache
          */
         private final ImageFetcher mFetcher;
@@ -68,11 +65,6 @@ public class RecentWidgetService extends RemoteViewsService {
          * Recents db
          */
         private final RecentStore mRecentsStore;
-
-        /**
-         * Cursor to use
-         */
-        private Cursor mCursor;
 
         /**
          * Remove views
@@ -94,6 +86,13 @@ public class RecentWidgetService extends RemoteViewsService {
             mRecentsStore = RecentStore.getInstance(context);
         }
 
+        private void closeCursor() {
+            if (mCursor != null && !mCursor.isClosed()) {
+                mCursor.close();
+                mCursor = null;
+            }
+        }
+
         /**
          * {@inheritDoc}
          */
@@ -112,6 +111,15 @@ public class RecentWidgetService extends RemoteViewsService {
         @Override
         public long getItemId(final int position) {
             return position;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public RemoteViews getLoadingView() {
+            // Nothing to do
+            return null;
         }
 
         /**
@@ -195,6 +203,14 @@ public class RecentWidgetService extends RemoteViewsService {
          * {@inheritDoc}
          */
         @Override
+        public void onCreate() {
+            // Nothing to do
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
         public void onDataSetChanged() {
             if (mCursor != null && !mCursor.isClosed()) {
                 mCursor.close();
@@ -217,29 +233,13 @@ public class RecentWidgetService extends RemoteViewsService {
         public void onDestroy() {
             closeCursor();
         }
+    }
 
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public RemoteViews getLoadingView() {
-            // Nothing to do
-            return null;
-        }
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void onCreate() {
-            // Nothing to do
-        }
-
-        private void closeCursor() {
-            if (mCursor != null && !mCursor.isClosed()) {
-                mCursor.close();
-                mCursor = null;
-            }
-        }
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public RemoteViewsFactory onGetViewFactory(final Intent intent) {
+        return new WidgetRemoteViewsFactory(getApplicationContext());
     }
 }

@@ -14,7 +14,7 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res-auto" >
 
     <!-- UI catetgory -->
     <PreferenceCategory android:title="@string/settings_ui_category" >
@@ -24,10 +24,6 @@
             android:key="color_scheme"
             android:summary="@string/settings_color_scheme_summary"
             android:title="@string/settings_color_scheme_title" />
-        <!-- Theme chooser -->
-        <Preference
-            android:key="theme_chooser"
-            android:title="@string/settings_theme_chooser_title" />
     </PreferenceCategory>
     <!-- Data catetory -->
     <PreferenceCategory android:title="@string/settings_data_category" >

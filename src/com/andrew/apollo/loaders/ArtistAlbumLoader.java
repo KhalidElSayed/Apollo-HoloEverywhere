@@ -11,6 +11,9 @@
 
 package com.andrew.apollo.loaders;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import android.content.Context;
 import android.database.Cursor;
 import android.provider.BaseColumns;
@@ -23,9 +26,6 @@ import com.andrew.apollo.utils.Lists;
 import com.andrew.apollo.utils.MusicUtils;
 import com.andrew.apollo.utils.PreferenceUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Used to query {@link MediaStore.Audio.Artists.Albums} and return the albums
  * for a particular artist.
@@ -35,19 +35,39 @@ import java.util.List;
 public class ArtistAlbumLoader extends WrappedAsyncTaskLoader<List<Album>> {
 
     /**
+     * @param context The {@link Context} to use.
+     * @param artistId The Id of the artist the albums belong to.
+     */
+    public static final Cursor makeArtistAlbumCursor(final Context context, final Long artistId) {
+        return context.getContentResolver().query(
+                MediaStore.Audio.Artists.Albums.getContentUri("external", artistId), new String[] {
+                        /* 0 */
+                        BaseColumns._ID,
+                        /* 1 */
+                        AlbumColumns.ALBUM,
+                        /* 2 */
+                        AlbumColumns.ARTIST,
+                        /* 3 */
+                        AlbumColumns.NUMBER_OF_SONGS,
+                        /* 4 */
+                        AlbumColumns.FIRST_YEAR
+                }, null, null, PreferenceUtils.getInstace(context).getArtistAlbumSortOrder());
+    }
+
+    /**
      * The result
      */
     private final ArrayList<Album> mAlbumsList = Lists.newArrayList();
 
     /**
-     * The {@link Cursor} used to run the query.
-     */
-    private Cursor mCursor;
-
-    /**
      * The Id of the artist the albums belong to.
      */
     private final Long mArtistID;
+
+    /**
+     * The {@link Cursor} used to run the query.
+     */
+    private Cursor mCursor;
 
     /**
      * Constructor of <code>ArtistAlbumHandler</code>
@@ -102,25 +122,5 @@ public class ArtistAlbumLoader extends WrappedAsyncTaskLoader<List<Album>> {
             mCursor = null;
         }
         return mAlbumsList;
-    }
-
-    /**
-     * @param context The {@link Context} to use.
-     * @param artistId The Id of the artist the albums belong to.
-     */
-    public static final Cursor makeArtistAlbumCursor(final Context context, final Long artistId) {
-        return context.getContentResolver().query(
-                MediaStore.Audio.Artists.Albums.getContentUri("external", artistId), new String[] {
-                        /* 0 */
-                        BaseColumns._ID,
-                        /* 1 */
-                        AlbumColumns.ALBUM,
-                        /* 2 */
-                        AlbumColumns.ARTIST,
-                        /* 3 */
-                        AlbumColumns.NUMBER_OF_SONGS,
-                        /* 4 */
-                        AlbumColumns.FIRST_YEAR
-                }, null, null, PreferenceUtils.getInstace(context).getArtistAlbumSortOrder());
     }
 }

@@ -36,21 +36,21 @@ public class SquareView extends ViewGroup {
      * {@inheritDoc}
      */
     @Override
-    protected void onMeasure(final int widthMeasureSpec, final int heightMeasureSpec) {
-        final View mChildren = getChildAt(0);
-        mChildren.measure(widthMeasureSpec, widthMeasureSpec);
-        final int mWidth = resolveSize(mChildren.getMeasuredWidth(), widthMeasureSpec);
-        mChildren.measure(mWidth, mWidth);
-        setMeasuredDimension(mWidth, mWidth);
+    protected void onLayout(final boolean changed, final int l, final int u, final int r,
+            final int d) {
+        getChildAt(0).layout(0, 0, r - l, d - u);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    protected void onLayout(final boolean changed, final int l, final int u, final int r,
-            final int d) {
-        getChildAt(0).layout(0, 0, r - l, d - u);
+    protected void onMeasure(final int widthMeasureSpec, final int heightMeasureSpec) {
+        final View mChildren = getChildAt(0);
+        mChildren.measure(widthMeasureSpec, widthMeasureSpec);
+        final int mWidth = resolveSize(mChildren.getMeasuredWidth(), widthMeasureSpec);
+        mChildren.measure(mWidth, mWidth);
+        setMeasuredDimension(mWidth, mWidth);
     }
 
     /**

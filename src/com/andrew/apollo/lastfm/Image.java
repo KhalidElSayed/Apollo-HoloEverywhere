@@ -34,17 +34,6 @@ import java.util.Locale;
  */
 public class Image extends ImageHolder {
 
-    final static ItemFactory<Image> FACTORY = new ImageFactory();
-
-    private String url;
-
-    private Image() {
-    }
-
-    public String getUrl() {
-        return url;
-    }
-
     private static class ImageFactory implements ItemFactory<Image> {
         @Override
         public Image createItemFromElement(final DomElement element) {
@@ -70,5 +59,16 @@ public class Image extends ImageHolder {
             }
             return i;
         }
+    }
+
+    final static ItemFactory<Image> FACTORY = new ImageFactory();
+
+    private String url;
+
+    private Image() {
+    }
+
+    public String getUrl() {
+        return url;
     }
 }

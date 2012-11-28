@@ -33,6 +33,16 @@ import com.andrew.apollo.widgets.theme.HoloSelector;
  */
 public class RepeatingImageButton extends ImageButton implements OnClickListener {
 
+    public interface RepeatListener {
+
+        /**
+         * @param v View to be set
+         * @param duration Duration of the long press
+         * @param repeatcount The number of repeat counts
+         */
+        void onRepeat(View v, long duration, int repeatcount);
+    }
+
     /**
      * Next button theme resource
      */
@@ -45,16 +55,26 @@ public class RepeatingImageButton extends ImageButton implements OnClickListener
 
     private static final long sInterval = 400;
 
+    private RepeatListener mListener;
+
+    private int mRepeatCount;
+
+    private final Runnable mRepeater = new Runnable() {
+        @Override
+        public void run() {
+            doRepeat(false);
+            if (isPressed()) {
+                postDelayed(this, sInterval);
+            }
+        }
+    };
+
     /**
      * The resources to use.
      */
     private final ThemeUtils mResources;
 
     private long mStartTime;
-
-    private int mRepeatCount;
-
-    private RepeatListener mListener;
 
     /**
      * @param context The {@link Context} to use
@@ -74,6 +94,17 @@ public class RepeatingImageButton extends ImageButton implements OnClickListener
     }
 
     /**
+     * @param shouldRepeat If True the repeat count stops at -1, false if to add
+     *            incrementally add the repeat count
+     */
+    private void doRepeat(final boolean shouldRepeat) {
+        final long now = SystemClock.elapsedRealtime();
+        if (mListener != null) {
+            mListener.onRepeat(this, now - mStartTime, shouldRepeat ? -1 : mRepeatCount++);
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -87,47 +118,6 @@ public class RepeatingImageButton extends ImageButton implements OnClickListener
             default:
                 break;
         }
-    }
-
-    /**
-     * Sets the listener to be called while the button is pressed and the
-     * interval in milliseconds with which it will be called.
-     * 
-     * @param l The listener that will be called
-     * @param interval The interval in milliseconds for calls
-     */
-    public void setRepeatListener(final RepeatListener l) {
-        mListener = l;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean performLongClick() {
-        if (mListener == null) {
-            ApolloUtils.showCheatSheet(this);
-        }
-        mStartTime = SystemClock.elapsedRealtime();
-        mRepeatCount = 0;
-        post(mRepeater);
-        return true;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean onTouchEvent(final MotionEvent event) {
-        if (event.getAction() == MotionEvent.ACTION_UP) {
-            /* Remove the repeater, but call the hook one more time */
-            removeCallbacks(mRepeater);
-            if (mStartTime != 0) {
-                doRepeat(true);
-                mStartTime = 0;
-            }
-        }
-        return super.onTouchEvent(event);
     }
 
     /**
@@ -166,25 +156,45 @@ public class RepeatingImageButton extends ImageButton implements OnClickListener
         return super.onKeyUp(keyCode, event);
     }
 
-    private final Runnable mRepeater = new Runnable() {
-        @Override
-        public void run() {
-            doRepeat(false);
-            if (isPressed()) {
-                postDelayed(this, sInterval);
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean onTouchEvent(final MotionEvent event) {
+        if (event.getAction() == MotionEvent.ACTION_UP) {
+            /* Remove the repeater, but call the hook one more time */
+            removeCallbacks(mRepeater);
+            if (mStartTime != 0) {
+                doRepeat(true);
+                mStartTime = 0;
             }
         }
-    };
+        return super.onTouchEvent(event);
+    }
 
     /**
-     * @param shouldRepeat If True the repeat count stops at -1, false if to add
-     *            incrementally add the repeat count
+     * {@inheritDoc}
      */
-    private void doRepeat(final boolean shouldRepeat) {
-        final long now = SystemClock.elapsedRealtime();
-        if (mListener != null) {
-            mListener.onRepeat(this, now - mStartTime, shouldRepeat ? -1 : mRepeatCount++);
+    @Override
+    public boolean performLongClick() {
+        if (mListener == null) {
+            ApolloUtils.showCheatSheet(this);
         }
+        mStartTime = SystemClock.elapsedRealtime();
+        mRepeatCount = 0;
+        post(mRepeater);
+        return true;
+    }
+
+    /**
+     * Sets the listener to be called while the button is pressed and the
+     * interval in milliseconds with which it will be called.
+     * 
+     * @param l The listener that will be called
+     * @param interval The interval in milliseconds for calls
+     */
+    public void setRepeatListener(final RepeatListener l) {
+        mListener = l;
     }
 
     /**
@@ -201,16 +211,6 @@ public class RepeatingImageButton extends ImageButton implements OnClickListener
             default:
                 break;
         }
-    }
-
-    public interface RepeatListener {
-
-        /**
-         * @param v View to be set
-         * @param duration Duration of the long press
-         * @param repeatcount The number of repeat counts
-         */
-        void onRepeat(View v, long duration, int repeatcount);
     }
 
 }

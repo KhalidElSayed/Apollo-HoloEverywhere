@@ -1,6 +1,9 @@
 
 package com.andrew.apollo.lyrics;
 
+import java.io.File;
+import java.io.IOException;
+
 import org.jaudiotagger.audio.AudioFile;
 import org.jaudiotagger.audio.AudioFileIO;
 import org.jaudiotagger.audio.exceptions.CannotReadException;
@@ -11,10 +14,66 @@ import org.jaudiotagger.tag.FieldKey;
 import org.jaudiotagger.tag.Tag;
 import org.jaudiotagger.tag.TagException;
 
-import java.io.File;
-import java.io.IOException;
-
 public class OfflineLyricsProvider implements LyricsProvider {
+
+    /**
+     * @param filePath The path to the lyrics we're deleting
+     */
+    public static void deleteLyrics(final String filePath) {
+        try {
+            final File file = new File(filePath);
+            if (file.exists()) {
+                // Use jAudioTagger library to delete the file's lyrics
+                final AudioFile audioFile = AudioFileIO.read(file);
+                final Tag tag = audioFile.getTag();
+                tag.deleteField(FieldKey.LYRICS);
+                audioFile.commit();
+            }
+        } catch (final ReadOnlyFileException e) {
+            e.printStackTrace();
+        } catch (final CannotReadException e) {
+            e.printStackTrace();
+        } catch (final IOException e) {
+            e.printStackTrace();
+        } catch (final TagException e) {
+            e.printStackTrace();
+        } catch (final InvalidAudioFrameException e) {
+            e.printStackTrace();
+        } catch (final CannotWriteException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * @param lyrics The lyrics to save
+     * @param filePath The path to save them
+     */
+    public static void saveLyrics(final String lyrics, final String filePath) {
+        try {
+            final File file = new File(filePath);
+            if (file.exists()) {
+                // Use jAudioTagger library to set the file's lyrics
+                final AudioFile audioFile = AudioFileIO.read(file);
+                final Tag tag = audioFile.getTag();
+                tag.setField(FieldKey.LYRICS, lyrics);
+                audioFile.commit();
+            }
+        } catch (final ReadOnlyFileException e) {
+            e.printStackTrace();
+        } catch (final CannotReadException e) {
+            e.printStackTrace();
+        } catch (final IOException e) {
+            e.printStackTrace();
+        } catch (final TagException e) {
+            e.printStackTrace();
+        } catch (final InvalidAudioFrameException e) {
+            e.printStackTrace();
+        } catch (final CannotWriteException e) {
+            e.printStackTrace();
+        } catch (final NullPointerException e) {
+            e.printStackTrace();
+        }
+    }
 
     private File mAudioFile;
 
@@ -25,16 +84,6 @@ public class OfflineLyricsProvider implements LyricsProvider {
      */
     public OfflineLyricsProvider(final String filePath) {
         setTrackFile(filePath);
-    }
-
-    /**
-     * @param path The file to save our {@link File}
-     */
-    public void setTrackFile(final String path) {
-        if (path == null) {
-            return;
-        }
-        mAudioFile = new File(path);
     }
 
     /**
@@ -78,61 +127,12 @@ public class OfflineLyricsProvider implements LyricsProvider {
     }
 
     /**
-     * @param lyrics The lyrics to save
-     * @param filePath The path to save them
+     * @param path The file to save our {@link File}
      */
-    public static void saveLyrics(final String lyrics, final String filePath) {
-        try {
-            final File file = new File(filePath);
-            if (file.exists()) {
-                // Use jAudioTagger library to set the file's lyrics
-                final AudioFile audioFile = AudioFileIO.read(file);
-                final Tag tag = audioFile.getTag();
-                tag.setField(FieldKey.LYRICS, lyrics);
-                audioFile.commit();
-            }
-        } catch (final ReadOnlyFileException e) {
-            e.printStackTrace();
-        } catch (final CannotReadException e) {
-            e.printStackTrace();
-        } catch (final IOException e) {
-            e.printStackTrace();
-        } catch (final TagException e) {
-            e.printStackTrace();
-        } catch (final InvalidAudioFrameException e) {
-            e.printStackTrace();
-        } catch (final CannotWriteException e) {
-            e.printStackTrace();
-        } catch (final NullPointerException e) {
-            e.printStackTrace();
+    public void setTrackFile(final String path) {
+        if (path == null) {
+            return;
         }
-    }
-
-    /**
-     * @param filePath The path to the lyrics we're deleting
-     */
-    public static void deleteLyrics(final String filePath) {
-        try {
-            final File file = new File(filePath);
-            if (file.exists()) {
-                // Use jAudioTagger library to delete the file's lyrics
-                final AudioFile audioFile = AudioFileIO.read(file);
-                final Tag tag = audioFile.getTag();
-                tag.deleteField(FieldKey.LYRICS);
-                audioFile.commit();
-            }
-        } catch (final ReadOnlyFileException e) {
-            e.printStackTrace();
-        } catch (final CannotReadException e) {
-            e.printStackTrace();
-        } catch (final IOException e) {
-            e.printStackTrace();
-        } catch (final TagException e) {
-            e.printStackTrace();
-        } catch (final InvalidAudioFrameException e) {
-            e.printStackTrace();
-        } catch (final CannotWriteException e) {
-            e.printStackTrace();
-        }
+        mAudioFile = new File(path);
     }
 }

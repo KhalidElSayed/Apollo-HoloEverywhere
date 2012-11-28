@@ -44,18 +44,6 @@ public class Genre {
      * {@inheritDoc}
      */
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (mGenreId == null ? 0 : mGenreId.hashCode());
-        result = prime * result + (mGenreName == null ? 0 : mGenreName.hashCode());
-        return result;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public boolean equals(final Object obj) {
         if (this == obj) {
             return true;
@@ -66,7 +54,7 @@ public class Genre {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final Genre other = (Genre)obj;
+        final Genre other = (Genre) obj;
         if (mGenreId == null) {
             if (other.mGenreId != null) {
                 return false;
@@ -82,6 +70,18 @@ public class Genre {
             return false;
         }
         return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + (mGenreId == null ? 0 : mGenreId.hashCode());
+        result = prime * result + (mGenreName == null ? 0 : mGenreName.hashCode());
+        return result;
     }
 
     /**

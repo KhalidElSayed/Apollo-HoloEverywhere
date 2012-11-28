@@ -5,10 +5,6 @@ import android.text.TextUtils;
 
 public class Capitalize {
 
-    /* This class is never initiated */
-    public Capitalize() {
-    }
-
     public static final String capitalize(String str) {
         return capitalize(str, null);
     }
@@ -56,5 +52,9 @@ public class Capitalize {
             }
         }
         return false;
+    }
+
+    /* This class is never initiated */
+    public Capitalize() {
     }
 }

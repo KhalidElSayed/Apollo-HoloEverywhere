@@ -34,19 +34,19 @@ public class ColorPanelView extends View {
 
     private static float mDensity = 1f;
 
-    private int mBorderColor = 0xff6E6E6E;
+    private AlphaPatternDrawable mAlphaPattern;
 
-    private int mColor = 0xff000000;
+    private int mBorderColor = 0xff6E6E6E;
 
     private Paint mBorderPaint;
 
-    private Paint mColorPaint;
+    private int mColor = 0xff000000;
 
-    private RectF mDrawingRect;
+    private Paint mColorPaint;
 
     private RectF mColorRect;
 
-    private AlphaPatternDrawable mAlphaPattern;
+    private RectF mDrawingRect;
 
     public ColorPanelView(final Context context) {
         this(context, null);
@@ -59,6 +59,22 @@ public class ColorPanelView extends View {
     public ColorPanelView(final Context context, final AttributeSet attrs, final int defStyle) {
         super(context, attrs, defStyle);
         init();
+    }
+
+    /**
+     * Get the color of the border surrounding the panel.
+     */
+    public int getBorderColor() {
+        return mBorderColor;
+    }
+
+    /**
+     * Get the color currently show by this view.
+     * 
+     * @return
+     */
+    public int getColor() {
+        return mColor;
     }
 
     private void init() {
@@ -111,20 +127,14 @@ public class ColorPanelView extends View {
         setUpColorRect();
     }
 
-    private void setUpColorRect() {
-        final RectF dRect = mDrawingRect;
-
-        final float left = dRect.left + BORDER_WIDTH_PX;
-        final float top = dRect.top + BORDER_WIDTH_PX;
-        final float bottom = dRect.bottom - BORDER_WIDTH_PX;
-        final float right = dRect.right - BORDER_WIDTH_PX;
-
-        mColorRect = new RectF(left, top, right, bottom);
-
-        mAlphaPattern = new AlphaPatternDrawable((int)(5 * mDensity));
-
-        mAlphaPattern.setBounds(Math.round(mColorRect.left), Math.round(mColorRect.top),
-                Math.round(mColorRect.right), Math.round(mColorRect.bottom));
+    /**
+     * Set the color of the border surrounding the panel.
+     * 
+     * @param color
+     */
+    public void setBorderColor(final int color) {
+        mBorderColor = color;
+        invalidate();
     }
 
     /**
@@ -137,30 +147,20 @@ public class ColorPanelView extends View {
         invalidate();
     }
 
-    /**
-     * Get the color currently show by this view.
-     * 
-     * @return
-     */
-    public int getColor() {
-        return mColor;
-    }
+    private void setUpColorRect() {
+        final RectF dRect = mDrawingRect;
 
-    /**
-     * Set the color of the border surrounding the panel.
-     * 
-     * @param color
-     */
-    public void setBorderColor(final int color) {
-        mBorderColor = color;
-        invalidate();
-    }
+        final float left = dRect.left + BORDER_WIDTH_PX;
+        final float top = dRect.top + BORDER_WIDTH_PX;
+        final float bottom = dRect.bottom - BORDER_WIDTH_PX;
+        final float right = dRect.right - BORDER_WIDTH_PX;
 
-    /**
-     * Get the color of the border surrounding the panel.
-     */
-    public int getBorderColor() {
-        return mBorderColor;
+        mColorRect = new RectF(left, top, right, bottom);
+
+        mAlphaPattern = new AlphaPatternDrawable((int) (5 * mDensity));
+
+        mAlphaPattern.setBounds(Math.round(mColorRect.left), Math.round(mColorRect.top),
+                Math.round(mColorRect.right), Math.round(mColorRect.bottom));
     }
 
 }

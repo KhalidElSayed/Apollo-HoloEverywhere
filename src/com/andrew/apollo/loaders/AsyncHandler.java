@@ -20,17 +20,13 @@ import android.os.HandlerThread;
  */
 public final class AsyncHandler {
 
-    private static final HandlerThread sHandlerThread = new HandlerThread("AsyncHandler");
-
     private static final Handler sHandler;
+
+    private static final HandlerThread sHandlerThread = new HandlerThread("AsyncHandler");
 
     static {
         sHandlerThread.start();
         sHandler = new Handler(sHandlerThread.getLooper());
-    }
-
-    /* This class is never initiated */
-    private AsyncHandler() {
     }
 
     /**
@@ -38,6 +34,10 @@ public final class AsyncHandler {
      */
     public static void post(final Runnable r) {
         sHandler.post(r);
+    }
+
+    /* This class is never initiated */
+    private AsyncHandler() {
     }
 
 }

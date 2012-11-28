@@ -35,28 +35,6 @@ import java.util.Set;
  */
 public abstract class ImageHolder {
 
-    protected Map<ImageSize, String> imageUrls = new HashMap<ImageSize, String>();
-
-    /**
-     * Returns a Set of all {@link ImageSize}s available.
-     * 
-     * @return all sizes
-     */
-    public Set<ImageSize> availableSizes() {
-        return imageUrls.keySet();
-    }
-
-    /**
-     * Returns the URL of the image in the specified size, or <code>null</code>
-     * if not available.
-     * 
-     * @param size The preferred size
-     * @return an image URL
-     */
-    public String getImageURL(final ImageSize size) {
-        return imageUrls.get(size);
-    }
-
     /**
      * @param holder
      * @param element
@@ -79,5 +57,27 @@ public abstract class ImageHolder {
                 holder.imageUrls.put(size, image.getText());
             }
         }
+    }
+
+    protected Map<ImageSize, String> imageUrls = new HashMap<ImageSize, String>();
+
+    /**
+     * Returns a Set of all {@link ImageSize}s available.
+     * 
+     * @return all sizes
+     */
+    public Set<ImageSize> availableSizes() {
+        return imageUrls.keySet();
+    }
+
+    /**
+     * Returns the URL of the image in the specified size, or <code>null</code>
+     * if not available.
+     * 
+     * @param size The preferred size
+     * @return an image URL
+     */
+    public String getImageURL(final ImageSize size) {
+        return imageUrls.get(size);
     }
 }
